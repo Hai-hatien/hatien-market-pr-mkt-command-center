@@ -1,0 +1,196 @@
+name: Product Owner — status every 2 hours
+
+on:
+  schedule:
+    - cron: '15 */2 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - recovery/ht-market-pr-mkt-20260825
+    paths:
+      - 'apps-script/**'
+      - 'tests/**'
+      - 'scripts/product-owner-status.mjs'
+      - 'PRODUCT_OWNER_AGENT.md'
+      - '.github/workflows/product-owner-status-2h.yml'
+  pull_request:
+    paths:
+      - 'apps-script/**'
+      - 'tests/**'
+      - 'scripts/product-owner-status.mjs'
+      - 'PRODUCT_OWNER_AGENT.md'
+      - '.github/workflows/product-owner-status-2h.yml'
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: ht-market-product-owner-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run exact static contracts
+        id: contracts
+        shell: bash
+        run: |
+          set +e
+          node tests/mobile-ux-contract.mjs > mobile-contract.log 2>&1
+          mobile_code=$?
+          node tests/backend-contract.mjs > backend-contract.log 2>&1
+          backend_code=$?
+          cat mobile-contract.log
+          cat backend-contract.log
+          if [ "$mobile_code" -eq 0 ] && [ "$backend_code" -eq 0 ]; then
+            echo "result=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAIL" >> "$GITHUB_OUTPUT"
+          fi
+          echo "mobile_exit=$mobile_code" >> "$GITHUB_OUTPUT"
+          echo "backend_exit=$backend_code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Find latest mobile-render evidence for this commit
+        id: mobile_evidence
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { owner, repo } = context.repo;
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: 'mobile-ux-evidence.yml',
+                per_page: 50
+              });
+              const exact = runs.data.workflow_runs.find(run =>
+                run.head_sha === context.sha && run.status === 'completed'
+              );
+              if (!exact) {
+                core.setOutput('result', 'NOT_EXECUTED');
+                core.setOutput('run_url', '');
+              } else {
+                core.setOutput('result', exact.conclusion === 'success' ? 'PASS' : 'FAIL');
+                core.setOutput('run_url', exact.html_url || '');
+              }
+            } catch (error) {
+              core.warning(`Không đọc được mobile evidence: ${error.message}`);
+              core.setOutput('result', 'NOT_EXECUTED');
+              core.setOutput('run_url', '');
+            }
+
+      - name: Find previous PO report commit
+        id: previous
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '[PO] Market & PR-MKT — Báo cáo trạng thái 2 giờ';
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100
+            });
+            const issue = issues.find(item => !item.pull_request && item.title === title);
+            if (!issue) {
+              core.setOutput('sha', '');
+              return;
+            }
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issue.number,
+              per_page: 100
+            });
+            const latest = comments.at(-1)?.body || '';
+            const match = latest.match(/Commit SHA:\s*`([0-9a-f]{40})`/i);
+            core.setOutput('sha', match ? match[1] : '');
+
+      - name: Build evidence-based PO report
+        env:
+          PO_STATIC_RESULT: ${{ steps.contracts.outputs.result }}
+          PO_MOBILE_RESULT: ${{ steps.mobile_evidence.outputs.result }}
+          PO_MOBILE_RUN_URL: ${{ steps.mobile_evidence.outputs.run_url }}
+          PO_PREVIOUS_SHA: ${{ steps.previous.outputs.sha }}
+          PO_SHEET_E2E_RESULT: ${{ vars.PO_SHEET_E2E_RESULT }}
+          PO_REAL_SHEET_DATA: ${{ vars.PO_REAL_SHEET_DATA }}
+          PO_REAL_GSC_DATA: ${{ vars.PO_REAL_GSC_DATA }}
+          HT_DRY_RUN: ${{ vars.HT_DRY_RUN }}
+          HT_SPREADSHEET_ID: ${{ secrets.HT_SPREADSHEET_ID || vars.HT_SPREADSHEET_ID }}
+          HT_WP_BASE_URL: ${{ secrets.HT_WP_BASE_URL || vars.HT_WP_BASE_URL }}
+          HT_WP_USER: ${{ secrets.HT_WP_USER || vars.HT_WP_USER }}
+          HT_WP_APP_PASSWORD: ${{ secrets.HT_WP_APP_PASSWORD || vars.HT_WP_APP_PASSWORD }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || vars.GEMINI_API_KEY }}
+          HT_WEB_APP_URL: ${{ secrets.HT_WEB_APP_URL || vars.HT_WEB_APP_URL }}
+          HT_DEPLOYMENT_ID: ${{ secrets.HT_DEPLOYMENT_ID || vars.HT_DEPLOYMENT_ID }}
+        run: node scripts/product-owner-status.mjs
+
+      - name: Publish scheduled/manual report to PO issue
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = '[PO] Market & PR-MKT — Báo cáo trạng thái 2 giờ';
+            const report = fs.readFileSync('po-report.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100
+            });
+            let issue = issues.find(item => !item.pull_request && item.title === title);
+            if (!issue) {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body: 'Issue do Product Owner Agent quản lý. Báo cáo mới được ghi mỗi 2 giờ; không lưu secret trong issue này.'
+              });
+              issue = created.data;
+            } else if (issue.state === 'closed') {
+              const reopened = await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                state: 'open'
+              });
+              issue = reopened.data;
+            }
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issue.number,
+              body: report
+            });
+
+      - name: Upload Product Owner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ht-market-po-status-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            po-report.md
+            po-state.json
+            mobile-contract.log
+            backend-contract.log
+          if-no-files-found: error
+          retention-days: 30
