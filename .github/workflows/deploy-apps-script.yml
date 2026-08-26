@@ -61,10 +61,16 @@ jobs:
           node tests/mobile-ux-contract.mjs
           node tests/backend-contract.mjs
 
-      - name: Verify clasp project binding
+      - name: Verify clasp project binding and preserved bridge
         run: |
           test -f .clasp.json
           node -e "const c=require('./.clasp.json'); if(!c.scriptId||c.rootDir!=='apps-script') process.exit(1); console.log('Bound script:', c.scriptId.slice(0,8)+'…'+c.scriptId.slice(-6));"
+          test -f apps-script/Legacy_Config.gs
+          test -f apps-script/Legacy_Push_CommandCenter.gs
+          test -f apps-script/Legacy_Scheduler.gs
+          grep -q 'function runCommandCenterPush' apps-script/Legacy_Push_CommandCenter.gs
+          grep -q 'function installDailyTriggers' apps-script/Legacy_Scheduler.gs
+          echo "Existing bridge functions are preserved in the deployment source."
 
       - name: Pull and back up current Apps Script project
         shell: bash
@@ -82,20 +88,20 @@ jobs:
           NODE
           cd /tmp/htm-clasp-read
           npx -y @google/clasp@3.4.0 pull | tee "$GITHUB_WORKSPACE/clasp-pull.log"
-          manifest=$(find pulled -type f -name appsscript.json -print -quit)
-          test -n "$manifest"
+          manifest_abs=$(find /tmp/htm-clasp-read/pulled -type f -name appsscript.json -print -quit)
+          test -n "$manifest_abs"
           echo "Apps Script API read access confirmed."
           cd "$GITHUB_WORKSPACE"
           cp -R /tmp/htm-clasp-read/pulled remote-backup
-          cp "$manifest" remote-appsscript.json
-          find remote-backup -maxdepth 2 -type f -print | sort | tee remote-files.txt
+          cp "$manifest_abs" remote-appsscript.json
+          find remote-backup -maxdepth 3 -type f -print | sort | tee remote-files.txt
 
-      - name: Push source to Apps Script
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy }}
+      - name: Push preserved source overlay to Apps Script
+        if: ${{ github.event_name == 'push' || inputs.deploy }}
         run: npx -y @google/clasp@3.4.0 push --force
 
       - name: Create or update Web App deployment
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy }}
+        if: ${{ github.event_name == 'push' || inputs.deploy }}
         env:
           HT_DEPLOYMENT_ID: ${{ secrets.HT_DEPLOYMENT_ID || vars.HT_DEPLOYMENT_ID }}
           DEPLOY_DESCRIPTION: ${{ inputs.description || 'HT Market Command Center preview' }}
@@ -115,15 +121,16 @@ jobs:
           if [ -z "$DEPLOYMENT_ID" ]; then
             DEPLOYMENT_ID=$(grep -Eo 'AKfy[a-zA-Z0-9_-]+' deployments.txt | head -n1 || true)
           fi
-          if [ -n "$DEPLOYMENT_ID" ]; then
-            echo "https://script.google.com/macros/s/${DEPLOYMENT_ID}/exec" > web-app-url.txt
-            cat web-app-url.txt
-          else
-            echo "Deployment created/updated but Web App URL could not be derived automatically." > web-app-url.txt
+          if [ -z "$DEPLOYMENT_ID" ]; then
+            echo "No deployment ID found after successful deployment."
+            exit 1
           fi
+          echo "$DEPLOYMENT_ID" > deployment-id.txt
+          echo "https://script.google.com/macros/s/${DEPLOYMENT_ID}/exec" > web-app-url.txt
+          cat web-app-url.txt
 
       - name: Comment preview URL on PR
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy && hashFiles('web-app-url.txt') != '' }}
+        if: ${{ hashFiles('web-app-url.txt') != '' }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -157,6 +164,7 @@ jobs:
             remote-backup/**
             deployment-output.txt
             deployments.txt
+            deployment-id.txt
             web-app-url.txt
           if-no-files-found: warn
           retention-days: 30
