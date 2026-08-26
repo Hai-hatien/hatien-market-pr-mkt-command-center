@@ -66,8 +66,29 @@ jobs:
           test -f .clasp.json
           node -e "const c=require('./.clasp.json'); if(!c.scriptId||c.rootDir!=='apps-script') process.exit(1); console.log('Bound script:', c.scriptId.slice(0,8)+'…'+c.scriptId.slice(-6));"
 
+      - name: Verify read access to Apps Script project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/htm-clasp-read
+          mkdir -p /tmp/htm-clasp-read
+          cp .clasp.json /tmp/htm-clasp-read/.clasp.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = '/tmp/htm-clasp-read/.clasp.json';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+          config.rootDir = 'pulled';
+          fs.writeFileSync(path, JSON.stringify(config, null, 2));
+          NODE
+          cd /tmp/htm-clasp-read
+          npx -y @google/clasp@3.4.0 pull > clasp-pull.log 2>&1
+          test -f pulled/appsscript.json
+          echo "Apps Script API read access confirmed."
+          cp clasp-pull.log "$GITHUB_WORKSPACE/clasp-pull.log"
+          cp pulled/appsscript.json "$GITHUB_WORKSPACE/remote-appsscript.json"
+
       - name: Push source to Apps Script
-        run: npx -y @google/clasp@latest push --force
+        run: npx -y @google/clasp@3.4.0 push --force
 
       - name: Create or update Web App deployment
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.deploy }}
@@ -78,14 +99,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "$HT_DEPLOYMENT_ID" ]; then
-            npx -y @google/clasp@latest create-deployment \
+            npx -y @google/clasp@3.4.0 create-deployment \
               --deploymentId "$HT_DEPLOYMENT_ID" \
               --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
           else
-            npx -y @google/clasp@latest create-deployment \
+            npx -y @google/clasp@3.4.0 create-deployment \
               --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
           fi
-          npx -y @google/clasp@latest list-deployments | tee deployments.txt
+          npx -y @google/clasp@3.4.0 list-deployments | tee deployments.txt
           DEPLOYMENT_ID=$(grep -Eo 'AKfy[a-zA-Z0-9_-]+' deployment-output.txt | tail -n1 || true)
           if [ -z "$DEPLOYMENT_ID" ]; then
             DEPLOYMENT_ID=$(grep -Eo 'AKfy[a-zA-Z0-9_-]+' deployments.txt | head -n1 || true)
@@ -126,6 +147,8 @@ jobs:
         with:
           name: apps-script-deploy-${{ github.sha }}-${{ github.run_id }}
           path: |
+            clasp-pull.log
+            remote-appsscript.json
             deployment-output.txt
             deployments.txt
             web-app-url.txt
