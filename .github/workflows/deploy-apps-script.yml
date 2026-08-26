@@ -1,0 +1,89 @@
+name: Deploy Apps Script Web App
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Push source and create/update Web App deployment'
+        required: true
+        default: true
+        type: boolean
+      description:
+        description: 'Deployment description'
+        required: false
+        default: 'HT Market Command Center deployment'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ht-market-apps-script-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate required Google credential
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "Missing GitHub secret: CLASPRC_JSON"
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+
+      - name: Run source contracts
+        run: |
+          node tests/mobile-ux-contract.mjs
+          node tests/backend-contract.mjs
+
+      - name: Verify clasp project binding
+        run: |
+          test -f .clasp.json
+          node -e "const c=require('./.clasp.json'); if(!c.scriptId||c.rootDir!=='apps-script') process.exit(1); console.log('Bound script:', c.scriptId.slice(0,8)+'…'+c.scriptId.slice(-6));"
+
+      - name: Push source to Apps Script
+        run: npx -y @google/clasp@latest push --force
+
+      - name: Create or update Web App deployment
+        if: ${{ inputs.deploy }}
+        env:
+          HT_DEPLOYMENT_ID: ${{ secrets.HT_DEPLOYMENT_ID || vars.HT_DEPLOYMENT_ID }}
+          DEPLOY_DESCRIPTION: ${{ inputs.description }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$HT_DEPLOYMENT_ID" ]; then
+            npx -y @google/clasp@latest create-deployment \
+              --deploymentId "$HT_DEPLOYMENT_ID" \
+              --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
+          else
+            npx -y @google/clasp@latest create-deployment \
+              --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
+          fi
+          npx -y @google/clasp@latest list-deployments | tee deployments.txt
+
+      - name: Upload deployment evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: apps-script-deploy-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            deployment-output.txt
+            deployments.txt
+          if-no-files-found: warn
+          retention-days: 30
