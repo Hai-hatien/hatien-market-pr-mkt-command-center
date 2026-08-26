@@ -69,7 +69,7 @@ jobs:
       - name: Verify read access to Apps Script project
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           rm -rf /tmp/htm-clasp-read
           mkdir -p /tmp/htm-clasp-read
           cp .clasp.json /tmp/htm-clasp-read/.clasp.json
@@ -81,10 +81,18 @@ jobs:
           fs.writeFileSync(path, JSON.stringify(config, null, 2));
           NODE
           cd /tmp/htm-clasp-read
+          set +e
           npx -y @google/clasp@3.4.0 pull > clasp-pull.log 2>&1
+          pull_code=$?
+          set -e
+          cat clasp-pull.log
+          cp clasp-pull.log "$GITHUB_WORKSPACE/clasp-pull.log"
+          if [ "$pull_code" -ne 0 ]; then
+            echo "clasp pull failed with exit code $pull_code"
+            exit "$pull_code"
+          fi
           test -f pulled/appsscript.json
           echo "Apps Script API read access confirmed."
-          cp clasp-pull.log "$GITHUB_WORKSPACE/clasp-pull.log"
           cp pulled/appsscript.json "$GITHUB_WORKSPACE/remote-appsscript.json"
 
       - name: Push source to Apps Script
