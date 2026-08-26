@@ -7,6 +7,7 @@ const must=[
   'Có nên làm / viết không?','Có cho xuất bản không?',
   'Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng',
   'Đồng ý làm','Nghiên cứu thêm','Tạm hoãn','Không làm',
+  'Vì sao cần xem lúc này:','Căn cứ:','Giá trị dự kiến:','Cần lưu ý:','Đề xuất:',
   '@media (max-width:380px)'
 ];
 for(const token of must){
@@ -14,9 +15,20 @@ for(const token of must){
 }
 
 const body=html.slice(html.indexOf('<body>'));
-const forbidden=[/PENDING_G0_G7/i,/\bG0\b/,/\bG7\b/,/Run ID/i,/decision_type/i,/owner_decision/i];
+const visibleBody=body.replace(/<script>[\s\S]*<\/script>/,'');
+const forbidden=[/PENDING_G0_G7/i,/\bG0\b/,/\bG7\b/,/Run ID/i,/decision_type/i,/owner_decision/i,/\bclaim\b/i,/\bgate\b/i];
 for(const pattern of forbidden){
-  if(pattern.test(body.replace(/<script>[\s\S]*<\/script>/,''))) throw new Error(`Lộ mã kỹ thuật trên UI: ${pattern}`);
+  if(pattern.test(visibleBody)) throw new Error(`Lộ mã kỹ thuật trên UI: ${pattern}`);
+}
+
+if(!html.includes(".replace(/\\bG[0-8]\\b/g,'AI')")) {
+  throw new Error('Thiếu lớp chuyển thuật ngữ kỹ thuật sang ngôn ngữ nghiệp vụ');
+}
+if(!html.includes(".replace(/\\bclaim\\b/gi,'nội dung cần kiểm chứng')")) {
+  throw new Error('Thiếu lớp chuyển thuật ngữ claim trên dữ liệu động');
+}
+if(!html.includes(".replace(/\\bgate\\b/gi,'bước kiểm tra')")) {
+  throw new Error('Thiếu lớp chuyển thuật ngữ gate trên dữ liệu động');
 }
 
 console.log('PASS: mobile owner UX contract');
