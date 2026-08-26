@@ -1,0 +1,56 @@
+name: Mobile UX evidence
+
+on:
+  push:
+    branches:
+      - 'recovery/ht-market-pr-mkt-20260825'
+    paths:
+      - 'apps-script/**'
+      - 'tests/mobile-ux-contract.mjs'
+      - 'scripts/render-mobile-preview.mjs'
+      - '.github/workflows/mobile-ux-evidence.yml'
+  pull_request:
+    paths:
+      - 'apps-script/**'
+      - 'tests/mobile-ux-contract.mjs'
+      - 'scripts/render-mobile-preview.mjs'
+      - '.github/workflows/mobile-ux-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static owner UX contract
+        run: node tests/mobile-ux-contract.mjs
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium --with-deps
+      - name: Start preview server
+        run: |
+          python3 -m http.server 4173 --directory apps-script > /tmp/ht-market-preview.log 2>&1 &
+          echo $! > /tmp/ht-market-preview.pid
+          for i in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/Preview.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/ht-market-preview.log
+          exit 1
+      - name: Render 3 screens at 360 and 390 px
+        run: node scripts/render-mobile-preview.mjs
+      - name: Upload mobile UX evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ht-market-mobile-ux-evidence-${{ github.sha }}
+          path: artifacts/mobile-ux/
+          if-no-files-found: error
+          retention-days: 30
