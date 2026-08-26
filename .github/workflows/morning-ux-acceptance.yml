@@ -1,0 +1,172 @@
+name: Morning UX acceptance — 08:30 VN
+
+on:
+  schedule:
+    - cron: '30 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TARGET_BRANCH: recovery/ht-market-pr-mkt-20260825
+      WEB_APP_URL: https://script.google.com/macros/s/AKfycbzzAteIFxUfLAgp-PMlL4mdrHgyslnecWL5b7AmkGVJn2HSmwVMQ9K7sM6MY5S_6ces/exec
+
+    steps:
+      - name: Checkout current project branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run source and mockup contracts
+        id: contracts
+        shell: bash
+        run: |
+          set +e
+          node tests/mobile-ux-contract.mjs > mobile-contract.log 2>&1
+          mobile_code=$?
+          node tests/backend-contract.mjs > backend-contract.log 2>&1
+          backend_code=$?
+          node - <<'NODE' > mockup-contract.log 2>&1
+          const fs=require('fs');
+          const html=fs.readFileSync('apps-script/Index.html','utf8');
+          const required=[
+            'Việc ưu tiên cao','Quyết định ngay','Chi tiết việc cần quyết định',
+            'Căn cứ chi tiết','Nguồn chính','Từ khóa đề xuất','CTA đề xuất',
+            'Duyệt có nên viết','Duyệt xuất bản','QA nội bộ','Preview bài viết',
+            'URL dự kiến','SEO Score','Xác nhận lịch đăng',
+            'Trạng thái sau khi đăng','Đang kiểm tra','LIVE'
+          ];
+          const missing=required.filter(x=>!html.includes(x));
+          if(missing.length){console.error('Thiếu thành phần mockup:',missing.join(' | '));process.exit(1)}
+          console.log('PASS: approved mockup structure');
+          NODE
+          mockup_code=$?
+          cat mobile-contract.log
+          cat backend-contract.log
+          cat mockup-contract.log
+          echo "mobile=$([ $mobile_code -eq 0 ] && echo PASS || echo FAIL)" >> "$GITHUB_OUTPUT"
+          echo "backend=$([ $backend_code -eq 0 ] && echo PASS || echo FAIL)" >> "$GITHUB_OUTPUT"
+          echo "mockup=$([ $mockup_code -eq 0 ] && echo PASS || echo FAIL)" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium --with-deps
+
+      - name: Start preview server
+        run: |
+          python3 -m http.server 4173 --directory apps-script > preview-server.log 2>&1 &
+          for i in {1..25}; do
+            curl -fsS http://127.0.0.1:4173/Preview.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat preview-server.log
+          exit 1
+
+      - name: Run mobile browser evidence
+        id: browser
+        shell: bash
+        run: |
+          set +e
+          node scripts/render-mobile-preview.mjs > browser-test.log 2>&1
+          code=$?
+          cat browser-test.log
+          echo "result=$([ $code -eq 0 ] && echo PASS || echo FAIL)" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Check deployed Web App endpoint
+        id: runtime
+        shell: bash
+        run: |
+          set +e
+          status=$(curl -L -sS -o runtime-response.html -w '%{http_code}' --max-time 20 "$WEB_APP_URL")
+          code=$?
+          echo "http_status=$status" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ] && [ "$status" -ge 200 ] && [ "$status" -lt 400 ]; then
+            echo "result=REACHABLE" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=NOT_CONFIRMED" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Build morning report
+        shell: bash
+        env:
+          MOBILE: ${{ steps.contracts.outputs.mobile }}
+          BACKEND: ${{ steps.contracts.outputs.backend }}
+          MOCKUP: ${{ steps.contracts.outputs.mockup }}
+          BROWSER: ${{ steps.browser.outputs.result }}
+          RUNTIME: ${{ steps.runtime.outputs.result }}
+          HTTP_STATUS: ${{ steps.runtime.outputs.http_status }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [ "$MOBILE" = PASS ] && [ "$BACKEND" = PASS ] && [ "$MOCKUP" = PASS ] && [ "$BROWSER" = PASS ]; then
+            verdict='PASS — ĐÚNG CẤU TRÚC MOCKUP VÀ MƯỢT TRÊN BẢN KIỂM THỬ'
+          else
+            verdict='FAIL — CHƯA ĐƯỢC PHÉP BÁO ĐÚNG MOCKUP / CHẠY MƯỢT'
+          fi
+          cat > morning-report.md <<EOF
+          # Báo cáo nghiệm thu UX buổi sáng
+
+          **Kết luận:** $verdict
+
+          - Repository: \`${{ github.repository }}\`
+          - Branch: \`$TARGET_BRANCH\`
+          - Commit kiểm tra: \`$sha\`
+          - Hợp đồng UX mobile: **$MOBILE**
+          - Backend và an toàn dữ liệu: **$BACKEND**
+          - Đối chiếu cấu trúc mockup đã duyệt: **$MOCKUP**
+          - Browser 360/390 px, tràn ngang và nội dung chính: **$BROWSER**
+          - Web App endpoint: **$RUNTIME** — HTTP \`$HTTP_STATUS\`
+          - Dữ liệu dùng cho browser test: **demo fixture có kiểm soát**; không được gọi là dữ liệu production.
+          - End-to-end ghi quyết định vào Google Sheet thật: **chưa được workflow này tự khẳng định**.
+
+          Quy tắc: chỉ được dùng cụm từ **“đúng mockup, chạy mượt”** khi cả mockup contract và browser test đều PASS. Runtime và dữ liệu thật được báo riêng, không nhập nhằng với demo.
+          EOF
+          cat morning-report.md
+
+      - name: Publish report to Product Owner issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const title='[PO] Market & PR-MKT — Báo cáo trạng thái 2 giờ';
+            const report=fs.readFileSync('morning-report.md','utf8');
+            const {owner,repo}=context.repo;
+            const issues=await github.paginate(github.rest.issues.listForRepo,{owner,repo,state:'all',per_page:100});
+            let issue=issues.find(x=>!x.pull_request&&x.title===title);
+            if(!issue){
+              issue=(await github.rest.issues.create({owner,repo,title,body:'Báo cáo Product Owner và nghiệm thu UX.'})).data;
+            }
+            if(issue.state==='closed'){
+              issue=(await github.rest.issues.update({owner,repo,issue_number:issue.number,state:'open'})).data;
+            }
+            await github.rest.issues.createComment({owner,repo,issue_number:issue.number,body:report});
+
+      - name: Upload morning evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-ux-acceptance-${{ github.run_id }}
+          path: |
+            morning-report.md
+            mobile-contract.log
+            backend-contract.log
+            mockup-contract.log
+            browser-test.log
+            artifacts/mobile-ux/**
+            runtime-response.html
+          if-no-files-found: warn
+          retention-days: 30
