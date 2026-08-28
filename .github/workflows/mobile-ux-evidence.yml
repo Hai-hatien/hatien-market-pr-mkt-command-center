@@ -7,12 +7,14 @@ on:
     paths:
       - 'apps-script/**'
       - 'tests/mobile-ux-contract.mjs'
+      - 'tests/case-acceptance-contract.mjs'
       - 'scripts/render-mobile-preview.mjs'
       - '.github/workflows/mobile-ux-evidence.yml'
   pull_request:
     paths:
       - 'apps-script/**'
       - 'tests/mobile-ux-contract.mjs'
+      - 'tests/case-acceptance-contract.mjs'
       - 'scripts/render-mobile-preview.mjs'
       - '.github/workflows/mobile-ux-evidence.yml'
   workflow_dispatch:
@@ -29,8 +31,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Static owner UX contract
-        run: node tests/mobile-ux-contract.mjs
+      - name: Static owner UX and five-case contracts
+        run: |
+          node tests/mobile-ux-contract.mjs
+          node tests/case-acceptance-contract.mjs
       - name: Install browser
         run: |
           npm install --no-save playwright@1.55.0
@@ -45,7 +49,7 @@ jobs:
           done
           cat /tmp/ht-market-preview.log
           exit 1
-      - name: Render 3 screens at 360 and 390 px
+      - name: Render owner screens at 360 and 390 px
         run: node scripts/render-mobile-preview.mjs
       - name: Upload mobile UX evidence
         uses: actions/upload-artifact@v4
