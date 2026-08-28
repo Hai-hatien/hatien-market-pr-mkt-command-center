@@ -18,6 +18,21 @@ export function normalizeKey(value) {
     .replace(/^_+|_+$/g, '');
 }
 
+export function lookupCandidates(value) {
+  const original = String(value || '').trim().toLowerCase();
+  const normalized = normalizeKey(value);
+  const hyphenated = normalized.replace(/_/g, '-');
+  return [...new Set([original, normalized, hyphenated].filter(Boolean))];
+}
+
+export function findMappedKey(map, value) {
+  if (!map) return null;
+  for (const key of lookupCandidates(value)) {
+    if (Object.prototype.hasOwnProperty.call(map, key)) return key;
+  }
+  return null;
+}
+
 export function loadModelRouting(filePath = routingPath) {
   const raw = fs.readFileSync(filePath, 'utf8');
   return JSON.parse(raw);
@@ -41,45 +56,51 @@ function tierPayload(config, modelTier, source, matchedKey, extra = {}) {
 export function resolveAgentModel(input, options = {}) {
   const config = options.config || loadModelRouting(options.filePath || routingPath);
   const raw = typeof input === 'string' ? { agent: input } : (input || {});
-  const agentKey = normalizeKey(raw.agent || raw.agent_id || raw.name || raw.role);
-  const roleKey = normalizeKey(raw.role || raw.role_group || raw.agent || raw.name);
-  const teamKey = normalizeKey(raw.team || raw.team_group || raw.department);
+  const agentRaw = raw.agent || raw.agent_id || raw.name || raw.role;
+  const roleRaw = raw.role || raw.role_group || raw.agent || raw.name;
+  const teamRaw = raw.team || raw.team_group || raw.department;
+  const intentRaw = raw.intent || raw.work_type || raw.task_type;
 
-  if (agentKey && config.agent_overrides?.[agentKey]) {
-    const override = config.agent_overrides[agentKey];
-    return tierPayload(config, override.model_tier, 'agent_overrides', agentKey, {
+  const agentOverrideKey = findMappedKey(config.agent_overrides, agentRaw);
+  if (agentOverrideKey) {
+    const override = config.agent_overrides[agentOverrideKey];
+    return tierPayload(config, override.model_tier, 'agent_overrides', agentOverrideKey, {
       display_name: override.display_name,
       role_group: override.role_group,
       reason: override.reason
     });
   }
 
-  if (roleKey && config.role_defaults?.[roleKey]) {
+  const roleKey = findMappedKey(config.role_defaults, roleRaw);
+  if (roleKey) {
     return tierPayload(config, config.role_defaults[roleKey], 'role_defaults', roleKey);
   }
 
-  if (teamKey && config.team_defaults?.[teamKey]) {
+  const teamKey = findMappedKey(config.team_defaults, teamRaw);
+  if (teamKey) {
     return tierPayload(config, config.team_defaults[teamKey], 'team_defaults', teamKey);
   }
 
-  const intentKey = normalizeKey(raw.intent || raw.work_type || raw.task_type);
+  const intentKey = normalizeKey(intentRaw);
+  const teamNormalized = normalizeKey(teamRaw);
   const fallback = config.fallback_policy || {};
   if (['strategy', 'approval', 'decision', 'owner_review', 'proof_qa'].includes(intentKey)) {
     return tierPayload(config, fallback.strategy_or_approval_unknown, 'fallback_policy', intentKey);
   }
-  if (['marketing', 'mkt', 'campaign', 'market_research', 'performance'].includes(teamKey || intentKey)) {
-    return tierPayload(config, fallback.marketing_team_unknown, 'fallback_policy', teamKey || intentKey);
+  if (['marketing', 'mkt', 'campaign', 'market_research', 'performance'].includes(teamNormalized || intentKey)) {
+    return tierPayload(config, fallback.marketing_team_unknown, 'fallback_policy', teamNormalized || intentKey);
   }
-  if (['execution', 'code', 'design', 'asset', 'test'].includes(teamKey || intentKey)) {
-    return tierPayload(config, fallback.execution_unknown, 'fallback_policy', teamKey || intentKey);
+  if (['execution', 'code', 'design', 'asset', 'test'].includes(teamNormalized || intentKey)) {
+    return tierPayload(config, fallback.execution_unknown, 'fallback_policy', teamNormalized || intentKey);
   }
 
+  const unknownKey = normalizeKey(agentRaw || roleRaw || teamRaw || 'unknown');
   return {
     model_tier: fallback.otherwise || 'REQUIRES_OWNER_CONFIRMATION',
     owner_label: null,
     normalized_label: null,
     source: 'fallback_policy',
-    matched_key: agentKey || roleKey || teamKey || 'unknown',
+    matched_key: unknownKey,
     reason: 'Không đủ thông tin để gán model an toàn; cần cập nhật model-routing.json hoặc hỏi owner.'
   };
 }
