@@ -1,6 +1,6 @@
 # HÀ TIÊN — MARKET & MARKETING AGENT PACK V1
 
-**Phiên bản:** 1.0.0  
+**Phiên bản:** 1.0.1  
 **Ngày dựng:** 28/08/2026  
 **Mục đích:** biến bộ Fullstack Marketing Unified Skill thành hệ vận hành theo từng case cho dự án **Hà Tiên — Market & PR-MKT Command Center**.
 
@@ -18,6 +18,27 @@
 1. **G0 Case Controller** — nhận từng case, đọc context, chọn agent/skill, hợp nhất kết quả và chỉ trình quyết định thật sự cần anh Hải.
 2. **G7 Proof & QA** — chặn claim, model, thông số, luật/tiêu chuẩn, media, canonical, CTA hoặc tracking chưa đủ bằng chứng.
 3. **Product R&D Liaison** — chuyển cơ hội sản phẩm mới/biến thể sang Product R&D; không tự tạo Product, SKU, Opportunity hoặc báo giá.
+
+### Model routing đã khóa
+
+Policy nằm tại:
+
+```text
+marketing-agent-pack/governance/model-routing.json
+marketing-agent-pack/governance/model-routing.md
+scripts/resolve-agent-model.mjs
+tests/model-routing-contract.mjs
+```
+
+Quy tắc owner:
+
+| Nhóm agent / vai trò | Model tier |
+|---|---|
+| BA, PO, PM, CMO | `GPT_5_6_SOL_EXTRA_HIGH` |
+| DEV, Content Creator, Designer | `GPT_5_5_MEDIUM` |
+| Các agent thuộc team Marketing | `GPT_5_5_EXTRA_HIGH` |
+
+Exact `agent_overrides` thắng team default. Unknown agent không đủ role/team/intent sẽ trả `REQUIRES_OWNER_CONFIRMATION`, không tự đoán model.
 
 ### Thư viện
 
@@ -66,6 +87,7 @@ Mỗi case trả về tối thiểu:
 - Kết luận điều hành.
 - Dữ liệu và giả định.
 - Agent chủ trì + skill đã dùng.
+- Model tier đã resolve từ `model-routing.json`.
 - Phân tích và bằng chứng.
 - Bảng hành động: việc gì, ai làm, khi nào, KPI.
 - Rủi ro/P0/P1.
@@ -80,6 +102,7 @@ Mỗi case trả về tối thiểu:
 - Nội dung public phải qua G7 và tiêu chuẩn bài viết Hà Tiên v2.1.
 - Nguồn không rõ không được biến thành fact.
 - Agent không đẩy enquiry thô lên anh Hải; phải nghiên cứu tới mức đủ quyết định.
+- Model mạnh hơn không thay quyền nghiệp vụ hoặc quyền duyệt public.
 
 ## 5. Runtime thực tế
 
@@ -93,7 +116,10 @@ marketing-agent-pack/
 ├── router/
 ├── .agents/
 ├── cases/
-└── governance/
+├── governance/
+│   ├── model-routing.json
+│   └── model-routing.md
+└── schedules/
 ```
 
 Bản đầy đủ 60 file, gồm 22 skill đã tách, được xuất thành ZIP để dùng ngoài repository.
