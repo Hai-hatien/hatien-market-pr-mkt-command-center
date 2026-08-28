@@ -124,6 +124,7 @@ function htmSaveMarketOwnerDecisionUnlocked_(payload) {
 function htmGetDecisionItems_() {
   const items = [];
   items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.G1_RESULTS, 'G1_RESULTS', 'SHOULD_DO'));
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'SHOULD_DO'));
   items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'PUBLISH'));
   return items
     .filter(x => !x.owner_decision || x.owner_decision === 'CHUA_QUYET_DINH')
