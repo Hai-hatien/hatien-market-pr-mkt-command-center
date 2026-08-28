@@ -7,6 +7,32 @@
 - Branch hiện tại: `recovery/ht-market-pr-mkt-20260825`
 - Sản phẩm cần hoàn thành: Mobile Dashboard V1 cho Anh Hải.
 
+## Model routing bắt buộc
+
+Policy chính thức nằm tại:
+
+```text
+marketing-agent-pack/governance/model-routing.json
+marketing-agent-pack/governance/model-routing.md
+```
+
+Quy tắc owner đã chốt:
+
+| Nhóm agent / vai trò | Model tier |
+|---|---|
+| BA, PO, PM, CMO | `GPT_5_6_SOL_EXTRA_HIGH` |
+| DEV, Content Creator, Designer | `GPT_5_5_MEDIUM` |
+| Các agent thuộc team Marketing | `GPT_5_5_EXTRA_HIGH` |
+
+Khi một agent có tên cụ thể trong `agent_overrides`, phải dùng override đó trước mọi team default. Lệnh kiểm tra:
+
+```bash
+node tests/model-routing-contract.mjs
+node scripts/resolve-agent-model.mjs g0-case-controller
+```
+
+Gán model không thay quyền nghiệp vụ: model mạnh hơn vẫn không được tự publish, tự ghi CRM, tự tạo Product/SKU/Opportunity/Quote hoặc tự gọi LIVE/DONE khi thiếu bằng chứng.
+
 ## Nhiệm vụ coding agent
 
 Tiếp tục lập trình, kiểm thử và chuẩn bị triển khai cho tới khi có bằng chứng sử dụng thật. Không dừng ở phân tích, kế hoạch, mockup, source tĩnh hoặc một commit.
