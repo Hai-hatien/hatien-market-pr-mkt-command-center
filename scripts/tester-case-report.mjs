@@ -16,9 +16,13 @@ const branch = String(process.env.TESTER_TARGET_BRANCH || process.env.GITHUB_REF
 const previousSha = String(process.env.TESTER_PREVIOUS_SHA || '').trim();
 const staticResult = norm(process.env.TESTER_STATIC_RESULT);
 const mobileResult = norm(process.env.TESTER_MOBILE_RESULT);
+const mobileRunUrl = String(process.env.TESTER_MOBILE_RUN_URL || '').trim();
 const deployResult = norm(process.env.TESTER_DEPLOY_RESULT);
 const deploySha = String(process.env.TESTER_DEPLOY_SHA || '').trim();
 const deployRunUrl = String(process.env.TESTER_DEPLOY_RUN_URL || '').trim();
+const latestDeployResult = norm(process.env.TESTER_LATEST_DEPLOY_RESULT);
+const latestDeploySha = String(process.env.TESTER_LATEST_DEPLOY_SHA || '').trim();
+const latestDeployRunUrl = String(process.env.TESTER_LATEST_DEPLOY_RUN_URL || '').trim();
 const deploymentId = String(process.env.HT_DEPLOYMENT_ID || '').trim();
 const webAppUrl = String(process.env.HT_WEB_APP_URL || '').trim();
 
@@ -88,9 +92,10 @@ const cases = registry.cases.map(item => ({
   tester_status: caseStatus(item)
 }));
 
+const deployedExact = isPass(deployResult) && deploySha === sha;
 const overall = cases.some(item => item.tester_status === 'FAIL')
   ? 'RED — CÓ CASE FAIL'
-  : cases.every(item => item.tester_status === 'PASS') && isPass(staticResult) && isPass(mobileResult) && isPass(deployResult) && runtimeMarker === 'APP_HTML_CONFIRMED'
+  : cases.every(item => item.tester_status === 'PASS') && isPass(staticResult) && isPass(mobileResult) && deployedExact && runtimeMarker === 'APP_HTML_CONFIRMED'
     ? 'GREEN — ĐỦ BẰNG CHỨNG NGHIỆM THU'
     : 'AMBER — CODE SẴN SÀNG, RUNTIME/UAT CHƯA ĐỦ';
 
@@ -98,6 +103,11 @@ const tableRows = cases.map(item => `| ${item.id} | ${item.name} | ${item.code_o
 const actions = cases.filter(item => item.tester_status !== 'PASS').map(item =>
   `- **${item.id}:** ${item.tester_status === 'FAIL' ? 'Sửa code/contract lỗi rồi chạy lại.' : `Chạy UAT thật và cập nhật ${item.runtime_evidence_env}.`}`
 ).join('\n') || '- Không còn action mở.';
+const deploymentNote = latestDeployResult === 'FAIL'
+  ? 'Lượt deploy mới nhất bị lỗi; không được coi code hiện tại đã lên Web App.'
+  : deployedExact
+    ? 'Đúng commit đang kiểm đã được deploy.'
+    : 'Chỉ có deployment nền cũ; commit đang kiểm chưa được chứng minh đã deploy.';
 
 const report = `# Báo cáo TESTER — ${new Date().toISOString()}
 
@@ -116,21 +126,26 @@ const report = `# Báo cáo TESTER — ${new Date().toISOString()}
 
 - Deployment ID: ${deploymentId ? 'ĐÃ CÓ' : 'CHƯA CÓ'}
 - Web App URL: ${webAppUrl || 'CHƯA CÓ'}
-- Deploy result: ${deployResult}
-- Deploy SHA: \`${deploySha || 'UNKNOWN'}\`
-${deployRunUrl ? `- Workflow deploy: ${deployRunUrl}` : ''}
+- Deployment phù hợp commit đang kiểm: ${deployResult}
+- Deploy SHA được dùng làm bằng chứng: \`${deploySha || 'UNKNOWN'}\`
+${deployRunUrl ? `- Workflow deploy nền: ${deployRunUrl}` : ''}
+- Lượt deploy mới nhất: ${latestDeployResult}
+- SHA lượt deploy mới nhất: \`${latestDeploySha || 'UNKNOWN'}\`
+${latestDeployRunUrl ? `- Workflow deploy mới nhất: ${latestDeployRunUrl}` : ''}
+- Nhận định: ${deploymentNote}
 
 ## 3. Production ra sao
 
 - HTTP Web App: ${httpStatus}
 - Runtime marker: ${runtimeMarker}
 - Tự publish WordPress: KHÔNG
-- Production được phép gọi: ${cases.every(item => item.tester_status === 'PASS') && runtimeMarker === 'APP_HTML_CONFIRMED' ? 'CÓ THỂ XEM XÉT' : 'CHƯA'}
+- Production được phép gọi: ${cases.every(item => item.tester_status === 'PASS') && runtimeMarker === 'APP_HTML_CONFIRMED' && deployedExact ? 'CÓ THỂ XEM XÉT' : 'CHƯA'}
 
 ## 4. Test được chưa
 
 - Static/case contracts: ${staticResult}
 - Mobile 360/390 px đúng commit: ${mobileResult}
+${mobileRunUrl ? `- Workflow mobile: ${mobileRunUrl}` : ''}
 - Case PASS: ${cases.filter(x => x.tester_status === 'PASS').length}/5
 - Case READY_FOR_TEST: ${cases.filter(x => x.tester_status === 'READY_FOR_TEST').length}/5
 - Case FAIL: ${cases.filter(x => x.tester_status === 'FAIL').length}/5
@@ -152,10 +167,15 @@ ${tableRows}
 ## Task kế tiếp
 
 ${actions}
+${latestDeployResult === 'FAIL' ? '- **Deploy:** làm mới quyền Google/clasp rồi deploy lại đúng commit.' : ''}
 
 > Tester không coi demo, source tĩnh hoặc lời mô tả là production evidence. Báo cáo không hiển thị secret.
 `;
 
 fs.writeFileSync('tester-report.md', report);
-fs.writeFileSync('tester-state.json', JSON.stringify({ generated_at: new Date().toISOString(), overall, sha, branch, staticResult, mobileResult, deployResult, httpStatus, runtimeMarker, cases }, null, 2));
+fs.writeFileSync('tester-state.json', JSON.stringify({
+  generated_at: new Date().toISOString(), overall, sha, branch, staticResult, mobileResult, mobileRunUrl,
+  deployResult, deploySha, deployRunUrl, latestDeployResult, latestDeploySha, latestDeployRunUrl,
+  httpStatus, runtimeMarker, cases
+}, null, 2));
 console.log(report);
