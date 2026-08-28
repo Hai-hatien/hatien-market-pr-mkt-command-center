@@ -1,0 +1,27 @@
+version: "1.0.0"
+system: "HT-MARKET-CASE-ROUTER"
+context_file: ".agents/product-marketing-context.md"
+default_controller: "g0-case-controller"
+max_clarifying_questions: 4
+agents:
+  mkt-strategist:
+    owns: [strategy, market, competitor, customer, positioning, campaign, pricing]
+    skills: [00-ke-hoach-mkt, 02-brief-chien-dich, 08-nghien-cuu-doi-thu, 09-insight-khach-hang, 10-tinh-kpi-nguoc, 16-marketing-psychology, 17-pricing-strategy]
+  content-producer:
+    owns: [content-calendar, video-script, ad-copy, ugc-egc-koc]
+    skills: [01-lich-noi-dung, 04-script-video, 05-copy-quang-cao, 06-brief-ugc-egc]
+  channel-operator:
+    owns: [channel-setup, landing-page, email, social-listening, referral]
+    skills: [11-thiet-lap-kenh, 12-brief-landing-page, 14-email-marketing, 15-social-listening, 18-referral-program]
+  performance-analyst:
+    owns: [data-analysis, performance-audit, kpi, reporting, experiments]
+    skills: [03-danh-gia-hieu-suat, 07-bao-cao-marketing, 10-tinh-kpi-nguoc, 13-phan-tich-du-lieu, 19-ab-test-setup]
+  product-rd-liaison:
+    owns: [industrial-kitchen-sizing, product-opportunity, new-variant]
+    skills: [skill-tinh-suat-an-hatiens]
+mandatory_gates:
+  public_content: [g7-proof-qa]
+  law_standard_safety_claim: [g7-proof-qa]
+  product_model_spec_claim: [g7-proof-qa, technical-review]
+  publish_or_external_write: [owner-approval, runtime-evidence]
+statuses: [NEW, TRIAGED, RESEARCHING, ANALYZED, G7_REVIEW, READY_FOR_ACTION, NEEDS_OWNER_DECISION, BLOCKED, CLOSED]
