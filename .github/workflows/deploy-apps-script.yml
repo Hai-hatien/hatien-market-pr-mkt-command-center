@@ -1,3 +1,4 @@
+# Deploy retry after CLASPRC_JSON refresh on 2026-08-28
 name: Deploy Apps Script Web App
 
 on:
