@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run static, backend and five-case contracts
+      - name: Run static, backend, five-case and model-routing contracts
         id: contracts
         shell: bash
         run: |
@@ -57,10 +57,13 @@ jobs:
           backend_code=$?
           node tests/case-acceptance-contract.mjs > case-contract.log 2>&1
           case_code=$?
+          node tests/model-routing-contract.mjs > model-routing-contract.log 2>&1
+          model_code=$?
           cat mobile-contract.log
           cat backend-contract.log
           cat case-contract.log
-          if [ "$mobile_code" -eq 0 ] && [ "$backend_code" -eq 0 ] && [ "$case_code" -eq 0 ]; then
+          cat model-routing-contract.log
+          if [ "$mobile_code" -eq 0 ] && [ "$backend_code" -eq 0 ] && [ "$case_code" -eq 0 ] && [ "$model_code" -eq 0 ]; then
             echo "result=PASS" >> "$GITHUB_OUTPUT"
           else
             echo "result=FAIL" >> "$GITHUB_OUTPUT"
@@ -183,5 +186,6 @@ jobs:
             mobile-contract.log
             backend-contract.log
             case-contract.log
+            model-routing-contract.log
           if-no-files-found: error
           retention-days: 30
