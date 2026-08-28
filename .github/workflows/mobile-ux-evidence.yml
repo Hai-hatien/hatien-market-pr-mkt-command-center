@@ -9,6 +9,7 @@ on:
       - 'tests/mobile-ux-contract.mjs'
       - 'tests/case-acceptance-contract.mjs'
       - 'scripts/render-mobile-preview.mjs'
+      - 'scripts/tester-case-report.mjs'
       - '.github/workflows/mobile-ux-evidence.yml'
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - 'tests/mobile-ux-contract.mjs'
       - 'tests/case-acceptance-contract.mjs'
       - 'scripts/render-mobile-preview.mjs'
+      - 'scripts/tester-case-report.mjs'
       - '.github/workflows/mobile-ux-evidence.yml'
   workflow_dispatch:
 
