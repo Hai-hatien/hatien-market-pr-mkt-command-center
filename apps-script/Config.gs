@@ -4,7 +4,7 @@
  */
 const HTM_CONFIG = Object.freeze({
   PROJECT_CODE: 'HT-MARKET-PRMKT-V1',
-  VERSION: '1.3.1-owner-decision-queue',
+  VERSION: '1.3.2-reviewed-content-queue',
   SPREADSHEET_ID: '1Ny1Rr9SHBO7s090J-eIZfpTo_JzgEvpvzr46nXnhwvI',
   TIME_ZONE: 'Asia/Ho_Chi_Minh',
   FINAL_APPROVER: 'ht@hatiencorp.vn',
