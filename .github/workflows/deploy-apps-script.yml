@@ -60,6 +60,7 @@ jobs:
         run: |
           node tests/mobile-ux-contract.mjs
           node tests/backend-contract.mjs
+          node tests/case-acceptance-contract.mjs
 
       - name: Verify clasp project binding and preserved bridge
         run: |
@@ -100,33 +101,24 @@ jobs:
         if: ${{ github.event_name == 'push' || inputs.deploy }}
         run: npx -y @google/clasp@3.4.0 push --force
 
-      - name: Create or update Web App deployment
+      - name: Update stable Web App deployment
         if: ${{ github.event_name == 'push' || inputs.deploy }}
         env:
-          HT_DEPLOYMENT_ID: ${{ secrets.HT_DEPLOYMENT_ID || vars.HT_DEPLOYMENT_ID }}
-          DEPLOY_DESCRIPTION: ${{ inputs.description || 'HT Market Command Center preview' }}
+          HT_DEPLOYMENT_ID: ${{ secrets.HT_DEPLOYMENT_ID || vars.HT_DEPLOYMENT_ID || 'AKfycbzzAteIFxUfLAgp-PMlL4mdrHgyslnecWL5b7AmkGVJn2HSmwVMQ9K7sM6MY5S_6ces' }}
+          DEPLOY_DESCRIPTION: ${{ inputs.description || 'HT Market Command Center stable preview' }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "$HT_DEPLOYMENT_ID" ]; then
-            npx -y @google/clasp@3.4.0 create-deployment \
-              --deploymentId "$HT_DEPLOYMENT_ID" \
-              --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
-          else
-            npx -y @google/clasp@3.4.0 create-deployment \
-              --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
-          fi
+          npx -y @google/clasp@3.4.0 create-deployment \
+            --deploymentId "$HT_DEPLOYMENT_ID" \
+            --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
           npx -y @google/clasp@3.4.0 list-deployments | tee deployments.txt
-          DEPLOYMENT_ID=$(grep -Eo 'AKfy[a-zA-Z0-9_-]+' deployment-output.txt | tail -n1 || true)
-          if [ -z "$DEPLOYMENT_ID" ]; then
-            DEPLOYMENT_ID=$(grep -Eo 'AKfy[a-zA-Z0-9_-]+' deployments.txt | head -n1 || true)
-          fi
-          if [ -z "$DEPLOYMENT_ID" ]; then
-            echo "No deployment ID found after successful deployment."
+          if ! grep -q "$HT_DEPLOYMENT_ID" deployments.txt; then
+            echo "Stable deployment ID was not returned by Apps Script."
             exit 1
           fi
-          echo "$DEPLOYMENT_ID" > deployment-id.txt
-          echo "https://script.google.com/macros/s/${DEPLOYMENT_ID}/exec" > web-app-url.txt
+          echo "$HT_DEPLOYMENT_ID" > deployment-id.txt
+          echo "https://script.google.com/macros/s/${HT_DEPLOYMENT_ID}/exec" > web-app-url.txt
           cat web-app-url.txt
 
       - name: Comment preview URL on PR
@@ -148,7 +140,7 @@ jobs:
                 owner,
                 repo,
                 issue_number: prs.data[0].number,
-                body: `Apps Script preview deployment for \`${context.sha}\`:\n\n${url}`
+                body: `Apps Script stable preview updated for \`${context.sha}\`:\n\n${url}`
               });
             }
 
