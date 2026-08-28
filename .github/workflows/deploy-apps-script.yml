@@ -9,6 +9,9 @@ on:
       - 'apps-script/**'
       - '.clasp.json'
       - 'tests/**'
+      - 'scripts/resolve-agent-model.mjs'
+      - 'marketing-agent-pack/governance/model-routing.json'
+      - 'marketing-agent-pack/governance/model-routing.md'
       - '.github/workflows/deploy-apps-script.yml'
   workflow_dispatch:
     inputs:
@@ -62,6 +65,7 @@ jobs:
           node tests/mobile-ux-contract.mjs
           node tests/backend-contract.mjs
           node tests/case-acceptance-contract.mjs
+          node tests/model-routing-contract.mjs
 
       - name: Verify clasp project binding and preserved bridge
         run: |
