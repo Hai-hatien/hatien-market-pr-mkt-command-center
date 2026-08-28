@@ -73,11 +73,11 @@ jobs:
               const { owner, repo } = context.repo;
               const runs = await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: 'mobile-ux-evidence.yml', per_page: 100 });
               const exact = runs.data.workflow_runs.find(run => run.head_sha === process.env.TARGET_SHA && run.status === 'completed');
-              core.setOutput('result', exact ? (exact.conclusion === 'success' ? 'PASS' : 'FAIL') : 'NOT_EXECUTED');
+              core.setOutput('status', exact ? (exact.conclusion === 'success' ? 'PASS' : 'FAIL') : 'NOT_EXECUTED');
               core.setOutput('run_url', exact?.html_url || '');
             } catch (error) {
               core.warning(`Không đọc được mobile evidence: ${error.message}`);
-              core.setOutput('result', 'NOT_EXECUTED');
+              core.setOutput('status', 'NOT_EXECUTED');
               core.setOutput('run_url', '');
             }
 
@@ -93,17 +93,24 @@ jobs:
               const { owner, repo } = context.repo;
               const runs = await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: 'deploy-apps-script.yml', branch: process.env.TARGET_BRANCH, per_page: 100 });
               const completed = runs.data.workflow_runs.filter(run => run.status === 'completed');
+              const latest = completed[0];
               const exact = completed.find(run => run.head_sha === process.env.TARGET_SHA);
               const baseline = completed.find(run => run.conclusion === 'success');
               const selected = exact || baseline;
-              core.setOutput('result', exact ? (exact.conclusion === 'success' ? 'PASS' : 'FAIL') : (baseline ? 'BASELINE' : 'NOT_EXECUTED'));
+              core.setOutput('status', exact ? (exact.conclusion === 'success' ? 'PASS' : 'FAIL') : (baseline ? 'BASELINE' : 'NOT_EXECUTED'));
               core.setOutput('sha', selected?.head_sha || '');
               core.setOutput('run_url', selected?.html_url || '');
+              core.setOutput('latest_status', latest ? String(latest.conclusion || latest.status || 'UNKNOWN').toUpperCase() : 'NOT_EXECUTED');
+              core.setOutput('latest_sha', latest?.head_sha || '');
+              core.setOutput('latest_run_url', latest?.html_url || '');
             } catch (error) {
               core.warning(`Không đọc được deployment evidence: ${error.message}`);
-              core.setOutput('result', 'NOT_EXECUTED');
+              core.setOutput('status', 'NOT_EXECUTED');
               core.setOutput('sha', '');
               core.setOutput('run_url', '');
+              core.setOutput('latest_status', 'NOT_EXECUTED');
+              core.setOutput('latest_sha', '');
+              core.setOutput('latest_run_url', '');
             }
 
       - name: Find previous tester report coordinate
@@ -127,10 +134,14 @@ jobs:
           TESTER_TARGET_BRANCH: ${{ steps.target.outputs.branch }}
           TESTER_PREVIOUS_SHA: ${{ steps.previous.outputs.sha }}
           TESTER_STATIC_RESULT: ${{ steps.contracts.outputs.result }}
-          TESTER_MOBILE_RESULT: ${{ steps.mobile.outputs.result }}
-          TESTER_DEPLOY_RESULT: ${{ steps.deploy.outputs.result }}
+          TESTER_MOBILE_RESULT: ${{ steps.mobile.outputs.status }}
+          TESTER_MOBILE_RUN_URL: ${{ steps.mobile.outputs.run_url }}
+          TESTER_DEPLOY_RESULT: ${{ steps.deploy.outputs.status }}
           TESTER_DEPLOY_SHA: ${{ steps.deploy.outputs.sha }}
           TESTER_DEPLOY_RUN_URL: ${{ steps.deploy.outputs.run_url }}
+          TESTER_LATEST_DEPLOY_RESULT: ${{ steps.deploy.outputs.latest_status }}
+          TESTER_LATEST_DEPLOY_SHA: ${{ steps.deploy.outputs.latest_sha }}
+          TESTER_LATEST_DEPLOY_RUN_URL: ${{ steps.deploy.outputs.latest_run_url }}
           TESTER_SHEET_E2E_RESULT: ${{ vars.TESTER_SHEET_E2E_RESULT }}
           TESTER_GSC_REAL_RESULT: ${{ vars.TESTER_GSC_REAL_RESULT }}
           TESTER_DAILY_RESEARCH_RESULT: ${{ vars.TESTER_DAILY_RESEARCH_RESULT }}
