@@ -1,0 +1,44 @@
+name: Apply owner queue fix
+
+on:
+  push:
+    branches:
+      - recovery/ht-market-pr-mkt-20260825
+    paths:
+      - 'scripts/apply-owner-queue-fix.mjs'
+      - '.github/workflows/apply-owner-queue-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ht-market-owner-queue-fix
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/ht-market-pr-mkt-20260825
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply deterministic source repair
+        run: node scripts/apply-owner-queue-fix.mjs
+      - name: Commit repaired owner queue
+        shell: bash
+        run: |
+          if git diff --quiet -- apps-script/Index.html apps-script/WebApp.gs; then
+            echo 'No source change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps-script/Index.html apps-script/WebApp.gs
+          git commit -m 'fix: route reviewed content into owner decision queue'
+          git push origin HEAD:recovery/ht-market-pr-mkt-20260825
