@@ -7,7 +7,9 @@ const must=[
   'Có nên làm / viết không?','Có cho xuất bản không?',
   'Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng',
   'Đồng ý làm','Nghiên cứu thêm','Tạm hoãn','Không làm',
-  'Vì sao cần xem lúc này:','Căn cứ:','Giá trị dự kiến:','Cần lưu ý:','Đề xuất:',
+  'Vì sao cần xem lúc này','Căn cứ','Giá trị dự kiến','Cần lưu ý','Đề xuất:',
+  'Đồng ý đề tài chỉ cho phép đội ngũ làm tiếp; chưa đồng nghĩa bài được xuất bản.',
+  'CHẾ ĐỘ XEM THỬ','không ghi Google Sheet','không đăng website',
   '@media (max-width:380px)'
 ];
 for(const token of must){
@@ -30,5 +32,11 @@ if(!html.includes(".replace(/\\bclaim\\b/gi,'nội dung cần kiểm chứng')")
 if(!html.includes(".replace(/\\bgate\\b/gi,'bước kiểm tra')")) {
   throw new Error('Thiếu lớp chuyển thuật ngữ gate trên dữ liệu động');
 }
+if(!html.includes("if(state.demo){demoApply(item,value,publishAt,note);")) {
+  throw new Error('Chế độ xem thử chưa được chặn trước lời gọi backend');
+}
+if(!html.includes("else showLoadError({message:'Không có kết nối Google Apps Script.")) {
+  throw new Error('Mất backend vẫn đang có nguy cơ giả vờ lưu thành công');
+}
 
-console.log('PASS: mobile owner UX contract');
+console.log('PASS: mobile owner UX, business language and demo safety contract');
