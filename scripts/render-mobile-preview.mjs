@@ -4,10 +4,11 @@ import path from 'node:path';
 
 const base='http://127.0.0.1:4173/Preview.html';
 const widths=[360,390];
-const screens=['overview','decisions','publish'];
+const screens=['overview','decisions','decided','publish'];
 const expected={
   overview:['Đáng chú ý sáng nay','Cần quyết định','Chờ duyệt đăng'],
   decisions:['Việc cần anh quyết định','Không có việc nào cần quyết định.'],
+  decided:['Đã quyết định'],
   publish:['Bài chờ đăng / lịch đăng','Có cho xuất bản không?','Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng']
 };
 const report=[];
@@ -36,10 +37,14 @@ try{
       await page.goto(url,{waitUntil:'networkidle'});
       await page.waitForTimeout(250);
       const title=await page.title();
-      const frame=page.frames().find(f=>f!==page.mainFrame());
+      const frame=page.frames().find(f=>f.url().includes('Index.html'));
       if(!frame) throw new Error(`Không tìm thấy iframe preview ${width}/${screen}`);
       for(const text of expected[screen]){
-        if(!(await frame.getByText(text,{exact:false}).first().isVisible())) throw new Error(`Thiếu text ${text} ở ${width}/${screen}`);
+        try{
+          await frame.getByText(text,{exact:false}).first().waitFor({state:'visible',timeout:5000});
+        } catch(_) {
+          throw new Error(`Thiếu text ${text} ở ${width}/${screen}`);
+        }
       }
       const overflow=await frame.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1);
       if(overflow) throw new Error(`Tràn ngang ở ${width}/${screen}`);

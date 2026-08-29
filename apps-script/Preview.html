@@ -10,7 +10,7 @@
   <iframe id="app" src="Index.html?demo=1" title="Hà Tiên Market Command Center"></iframe>
   <script>
     const screen=new URLSearchParams(location.search).get('screen')||'overview';
-    const allowed=['overview','decisions','publish'];
+    const allowed=['overview','decisions','decided','publish'];
     const frame=document.getElementById('app');
     frame.addEventListener('load',()=>{
       const target=allowed.includes(screen)?screen:'overview';
