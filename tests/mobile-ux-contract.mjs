@@ -4,6 +4,7 @@ const html=fs.readFileSync('apps-script/Index.html','utf8');
 const must=[
   'screen-overview','screen-decisions','screen-decided','screen-publish',
   'Tổng quan','Cần quyết định','Chờ đăng','Tin lên lịch đăng','Chưa đủ điều kiện lên lịch','Đủ điều kiện, chờ chọn lịch','Đã lên lịch','Đã đăng','Nghiên cứu lại','Sửa lịch đăng','Xem bài đã đăng','Lý do chưa lên lịch','Link đã đăng',
+  'publish-search','publish-filter','publish-toggle','publish-more','Xem chi tiết','Thu gọn','Xem thêm','Tất cả','Chưa đủ điều kiện','Chờ chọn lịch','Cần nghiên cứu lại','Có link đăng','Chưa có link',
   'Đã quyết định',
   'Có nên làm / viết không?','Có cho xuất bản không?',
   'Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng',

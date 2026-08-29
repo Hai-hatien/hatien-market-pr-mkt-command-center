@@ -86,6 +86,18 @@
     .status-step{padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:10px;font-weight:700}
     .status-step.current{background:var(--ok-bg);color:var(--ok)}
     .empty{padding:27px 17px;background:var(--card);border:1px dashed #d6cfc3;border-radius:18px;color:var(--muted);font-size:14px;line-height:1.5;text-align:center}
+    .publish-tools{display:grid;gap:9px;margin:14px 0}
+    .publish-search{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text)}
+    .filter-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .filter-chip{padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
+    .filter-chip.active{border-color:#b48747;background:#f1e8d8;color:#654816}
+    .publish-group-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+    .publish-group-toggle h2{margin:0}
+    .publish-group-toggle .group-chevron{color:var(--muted);font-size:16px}
+    .publish-group-toggle[aria-expanded="false"] .group-chevron{transform:rotate(-90deg)}
+    .publish-detail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    .publish-detail[hidden]{display:none}
+    .publish-more{margin-top:10px;width:100%}
     .loading{padding:36px 0;color:var(--muted);text-align:center}
     .bottom{position:fixed;z-index:10;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:7px max(10px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));background:rgba(255,255,255,.98);border-top:1px solid var(--line)}
     .nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;width:min(720px,100%)}
@@ -152,13 +164,14 @@
 
     <section id="screen-publish" class="screen" aria-labelledby="publish-heading">
       <div class="section-title"><h2 id="publish-heading">Tin lên lịch đăng</h2><span id="publish-count"></span></div>
-      <div id="publish-not-ready-heading" class="section-title" hidden><h2>Chưa đủ điều kiện lên lịch</h2><span id="publish-not-ready-count"></span></div>
+      <div class="publish-tools"><input id="publish-search" class="publish-search" type="search" placeholder="Tìm theo tiêu đề, trạng thái hoặc website" aria-label="Tìm tin lên lịch đăng"><div id="publish-filters" class="filter-chips"><button class="filter-chip active" data-action="publish-filter" data-filter="all">Tất cả</button><button class="filter-chip" data-action="publish-filter" data-filter="not_ready">Chưa đủ điều kiện</button><button class="filter-chip" data-action="publish-filter" data-filter="ready_to_schedule">Chờ chọn lịch</button><button class="filter-chip" data-action="publish-filter" data-filter="scheduled">Đã lên lịch</button><button class="filter-chip" data-action="publish-filter" data-filter="published">Đã đăng</button><button class="filter-chip" data-action="publish-filter" data-filter="needs_research">Cần nghiên cứu lại</button><button class="filter-chip" data-action="publish-filter" data-filter="has_link">Có link đăng</button><button class="filter-chip" data-action="publish-filter" data-filter="no_link">Chưa có link</button></div></div>
+      <div id="publish-not-ready-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="not_ready" aria-expanded="true"><h2>Chưa đủ điều kiện lên lịch</h2><span><span id="publish-not-ready-count"></span> <span class="group-chevron">⌄</span></span></button></div>
       <div id="publish-not-ready-list" class="list"></div>
-      <div id="publish-ready-heading" class="section-title" hidden><h2>Đủ điều kiện, chờ chọn lịch</h2><span id="publish-ready-count"></span></div>
+      <div id="publish-ready-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="ready_to_schedule" aria-expanded="true"><h2>Đủ điều kiện, chờ chọn lịch</h2><span><span id="publish-ready-count"></span> <span class="group-chevron">⌄</span></span></button></div>
       <div id="publish-ready-list" class="list"></div>
-      <div id="publish-scheduled-heading" class="section-title" hidden><h2>Đã lên lịch</h2><span id="publish-scheduled-count"></span></div>
+      <div id="publish-scheduled-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="scheduled" aria-expanded="true"><h2>Đã lên lịch</h2><span><span id="publish-scheduled-count"></span> <span class="group-chevron">⌄</span></span></button></div>
       <div id="publish-scheduled-list" class="list"></div>
-      <div id="publish-published-heading" class="section-title" hidden><h2>Đã đăng</h2><span id="publish-published-count"></span></div>
+      <div id="publish-published-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="published" aria-expanded="true"><h2>Đã đăng</h2><span><span id="publish-published-count"></span> <span class="group-chevron">⌄</span></span></button></div>
       <div id="publish-published-list" class="list"></div>
     </section>
   </main>
@@ -176,7 +189,7 @@
 
 <script>
   const params=new URLSearchParams(location.search);
-  const state={model:null,busy:false,demo:params.get('demo')==='1'};
+  const state={model:null,busy:false,demo:params.get('demo')==='1',publishItems:[],publishLifecycle:null,publishView:{query:'',filter:'all',limits:{not_ready:5,ready_to_schedule:5,scheduled:5,published:5},open:{not_ready:true,ready_to_schedule:true,scheduled:true,published:true},details:{}}};
   const $=s=>document.querySelector(s);
   const $$=s=>Array.from(document.querySelectorAll(s));
   const esc=s=>String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -333,16 +346,22 @@
     return '';
   }
 
+  function publishMatches(item){
+    const fields=[item.title,item.status,item.publish_block_reason,item.owner_decision,item.publication_status,item.target_site,item.post_url,publishStatus(item),publishReason(item)];
+    return fields.join(' ').toLowerCase().includes(state.publishView.query.trim().toLowerCase());
+  }
+
   function publishCard(item,index,group){
     const title=item.title||item.topic_title||item.name||'Chưa có tiêu đề';
     const url=item.post_url||item.published_url||'';
     const date=item.publish_at||item.scheduled_at||'';
-    let html='<article class="card publish-card"><h3>'+esc(title)+'</h3><p class="muted">Trạng thái: '+esc(publishStatus(item))+'</p>';
+    const detailId='publish-detail-'+index;
+    let html='<article class="card publish-card"><h3>'+esc(title)+'</h3><p class="muted">Trạng thái: '+esc(publishStatus(item))+'</p><button class="btn secondary" data-action="publish-detail" data-index="'+index+'">'+(state.publishView.details[index]?'Thu gọn':'Xem chi tiết')+'</button><div class="publish-detail" id="'+detailId+'" '+(state.publishView.details[index]?'':'hidden')+'>';
     const reason=publishReason(item);
     if(reason)html+='<p class="muted">Lý do chưa lên lịch: '+esc(reason)+'</p>';
     if(date)html+='<p class="muted">Ngày giờ lên lịch: '+esc(date)+'</p>';
     if(url)html+='<p class="muted">Link đã đăng: '+esc(url)+'</p>';
-    html+='<div class="actions">';
+    html+='</div><div class="actions">';
     if(group==='not_ready')html+='<button class="btn secondary" data-action="publish" data-index="'+index+'" data-value="SUA_LAI">Nghiên cứu lại</button>';
     if(group==='ready_to_schedule')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Lên lịch đăng</button>';
     if(group==='scheduled')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Sửa lịch đăng</button>';
@@ -353,17 +372,25 @@
   }
 
   function renderPublish(lifecycle){
-    const groups=lifecycle||{not_ready:[],ready_to_schedule:[],scheduled:[],published:[]};
-    const sections=[['not_ready','publish-not-ready-heading','publish-not-ready-list'],['ready_to_schedule','publish-ready-heading','publish-ready-list'],['scheduled','publish-scheduled-heading','publish-scheduled-list'],['published','publish-published-heading','publish-published-list']];
+    state.publishLifecycle=lifecycle||{not_ready:[],ready_to_schedule:[],scheduled:[],published:[]};
+    const sections=[['not_ready','publish-not-ready-heading','publish-not-ready-list','publish-not-ready-count'],['ready_to_schedule','publish-ready-heading','publish-ready-list','publish-ready-count'],['scheduled','publish-scheduled-heading','publish-scheduled-list','publish-scheduled-count'],['published','publish-published-heading','publish-published-list','publish-published-count']];
     state.publishItems=[];
-    sections.forEach(([group,heading,list])=>{
-      const items=Array.isArray(groups[group])?groups[group]:[];
-      const el=$('#'+list),head=$('#'+heading);
-      if(head)head.hidden=!items.length;
-      if(el)el.innerHTML=items.length?items.map(item=>{const index=state.publishItems.length;state.publishItems.push(item);return publishCard(item,index,group)}).join(''):'<p class="empty">'+(group==='not_ready'?'Có đề tài trong kế hoạch nhưng chưa đủ điều kiện duyệt.':'Không có việc nào trong nhóm này.')+'</p>';
+    sections.forEach(([group,heading,list,count])=>{
+      const all=Array.isArray(state.publishLifecycle[group])?state.publishLifecycle[group]:[];
+      const filtered=all.filter(publishMatches).filter(item=>{
+        if(state.publishView.filter==='has_link')return Boolean(item.post_url||item.published_url);
+        if(state.publishView.filter==='no_link')return !Boolean(item.post_url||item.published_url);
+        if(state.publishView.filter==='needs_research')return item.owner_decision==='SUA_LAI'||group==='not_ready';
+        return state.publishView.filter==='all'||state.publishView.filter===group;
+      });
+      const shown=filtered.slice(0,state.publishView.limits[group]);
+      const el=$('#'+list),head=$('#'+heading),toggle=head&&head.querySelector('.publish-group-toggle');
+      if(head)head.hidden=!filtered.length;
+      if(count)$('#'+count).textContent=filtered.length+' bài';
+      if(toggle)toggle.setAttribute('aria-expanded',String(state.publishView.open[group]!==false));
+      if(el){el.hidden=state.publishView.open[group]===false;el.innerHTML=shown.map(item=>{const index=state.publishItems.length;state.publishItems.push(item);return publishCard(item,index,group)}).join('');if(filtered.length>shown.length)el.innerHTML+='<button class="btn secondary publish-more" data-action="publish-more" data-group="'+group+'">Xem thêm ('+(filtered.length-shown.length)+')</button>'}
     });
-    const any=sections.some(([group])=>Array.isArray(groups[group])&&groups[group].length);
-    if(!any&&$('#publish-not-ready-list'))$('#publish-not-ready-list').innerHTML='<p class="empty">Không có việc nào cần quyết định.</p>';
+    $('#publish-count').textContent=sections.reduce((n,[group])=>n+(state.publishLifecycle[group]||[]).filter(publishMatches).length,0)+' bài';
   }
 
   function publicationLabel(status){
@@ -380,7 +407,13 @@
     if(action==='open-post'){const item=(state.publishItems||[])[i],url=item&&(item.post_url||item.published_url||'');if(/^https?:\/\//i.test(url))window.open(url,'_blank','noopener')}
     if(action==='open-schedule'){const box=$('#publish-schedule-'+i);if(box){box.classList.toggle('open');setScheduleMin(i)}}
     if(action==='confirm-schedule')schedule(i);
+    if(action==='publish-filter'){state.publishView.filter=b.dataset.filter||'all';$$('.filter-chip').forEach(x=>x.classList.toggle('active',x===b));renderPublish(state.publishLifecycle)}
+    if(action==='publish-toggle'){const group=b.dataset.group;state.publishView.open[group]=state.publishView.open[group]===false;renderPublish(state.publishLifecycle)}
+    if(action==='publish-more'){const group=b.dataset.group;state.publishView.limits[group]=(state.publishView.limits[group]||5)+5;renderPublish(state.publishLifecycle)}
+    if(action==='publish-detail'){state.publishView.details[i]=!state.publishView.details[i];renderPublish(state.publishLifecycle)}
   });
+
+  $('#publish-search')?.addEventListener('input',e=>{state.publishView.query=e.target.value||'';renderPublish(state.publishLifecycle)});
 
   $('#view-all-pending')?.addEventListener('click',()=>switchScreen('decisions'));
 

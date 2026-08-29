@@ -9,7 +9,7 @@ const expected={
   overview:['Đáng chú ý sáng nay','Cần quyết định','Chờ duyệt đăng'],
   decisions:['Việc cần anh quyết định','Không có việc nào cần quyết định.'],
   decided:['Đã quyết định'],
-  publish:['Tin lên lịch đăng','Chưa đủ điều kiện lên lịch','Đủ điều kiện, chờ chọn lịch','Đã lên lịch','Đã đăng','Nghiên cứu lại','Sửa lịch đăng','Xem bài đã đăng']
+  publish:['Tin lên lịch đăng','Tất cả','Chưa đủ điều kiện','Chờ chọn lịch','Đã lên lịch','Đã đăng','Cần nghiên cứu lại','Có link đăng','Chưa có link','Chưa đủ điều kiện lên lịch','Đủ điều kiện, chờ chọn lịch','Nghiên cứu lại','Sửa lịch đăng','Xem bài đã đăng','Xem chi tiết']
 };
 const report=[];
 const candidates = [
