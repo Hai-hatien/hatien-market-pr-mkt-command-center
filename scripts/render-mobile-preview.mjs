@@ -9,7 +9,7 @@ const expected={
   overview:['Đáng chú ý sáng nay','Cần quyết định','Chờ duyệt đăng'],
   decisions:['Việc cần anh quyết định','Không có việc nào cần quyết định.'],
   decided:['Đã quyết định'],
-  publish:['Bài chờ đăng / lịch đăng','Có cho xuất bản không?','Đăng ngay',['Lên lịch đăng','Xác nhận lịch đăng'],'Sửa lại','Không đăng']
+  publish:['Tin lên lịch đăng','Chưa đủ điều kiện lên lịch','Đủ điều kiện, chờ chọn lịch','Đã lên lịch','Đã đăng','Nghiên cứu lại','Sửa lịch đăng','Xem bài đã đăng']
 };
 const report=[];
 const candidates = [
@@ -59,9 +59,11 @@ try{
         let found=false;
         for(const token of tokens){
           try{
-            await frame.getByText(token,{exact:false}).first().waitFor({state:'visible',timeout:1000});
-            found=true;
-            break;
+            const matches=frame.getByText(token,{exact:false});
+            for(let i=0;i<await matches.count();i++){
+              if(await matches.nth(i).isVisible()){found=true;break}
+            }
+            if(found)break;
           } catch(_) {}
         }
         if(found) continue;

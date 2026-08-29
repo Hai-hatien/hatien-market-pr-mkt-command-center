@@ -151,12 +151,15 @@
     </section>
 
     <section id="screen-publish" class="screen" aria-labelledby="publish-heading">
-      <div class="section-title"><h2 id="publish-heading">Bài chờ đăng / lịch đăng</h2><span id="publish-count"></span></div>
-      <div id="publish-pending-list" class="list"></div>
-      <div id="scheduled-heading" class="section-title" hidden><h2>Đã lên lịch</h2><span id="scheduled-count"></span></div>
-      <div id="scheduled-list" class="list"></div>
-      <div id="after-publish-heading" class="section-title" hidden><h2>Sau khi duyệt đăng</h2><span id="after-publish-count"></span></div>
-      <div id="after-publish-list" class="list"></div>
+      <div class="section-title"><h2 id="publish-heading">Tin lên lịch đăng</h2><span id="publish-count"></span></div>
+      <div id="publish-not-ready-heading" class="section-title" hidden><h2>Chưa đủ điều kiện lên lịch</h2><span id="publish-not-ready-count"></span></div>
+      <div id="publish-not-ready-list" class="list"></div>
+      <div id="publish-ready-heading" class="section-title" hidden><h2>Đủ điều kiện, chờ chọn lịch</h2><span id="publish-ready-count"></span></div>
+      <div id="publish-ready-list" class="list"></div>
+      <div id="publish-scheduled-heading" class="section-title" hidden><h2>Đã lên lịch</h2><span id="publish-scheduled-count"></span></div>
+      <div id="publish-scheduled-list" class="list"></div>
+      <div id="publish-published-heading" class="section-title" hidden><h2>Đã đăng</h2><span id="publish-published-count"></span></div>
+      <div id="publish-published-list" class="list"></div>
     </section>
   </main>
 </div>
@@ -226,7 +229,7 @@
     renderSignals(state.model.signals||[]);
     renderDecisions(state.model.decisions||[], state.model.decisions_candidates||[]);
     renderDecided(state.model.decided||[]);
-    renderPublish(state.model.publish||[],state.model.scheduled||[],state.model.after_publish||[]);
+  renderPublish(state.model.publish_lifecycle||buildLegacyPublishLifecycle(state.model));
   }
 
   function renderSignals(items){
@@ -297,6 +300,72 @@
     $('#after-publish-list').innerHTML=afterPublish.map(x=>`<article class="card"><div class="tag ${x.publication_status==='LIVE_VERIFIED'?'ready':'waiting'}">${esc(publicationLabel(x.publication_status))}</div><h3>${esc(ownerText(x.title))}</h3><div class="meta">${esc(x.target_site||'Website Hà Tiên')}</div>${x.post_url?link(x.post_url,'Mở trang đã đăng'):''}${x.post_publish_check?`<div class="body"><b>Kiểm sau đăng:</b> ${esc(ownerText(x.post_publish_check))}</div>`:''}<div class="status-flow"><span class="status-step current">Đã duyệt</span><span class="status-step current">Đã gửi đăng</span><span class="status-step ${x.publication_status==='PUBLISHED_CHECKING'||x.publication_status==='LIVE_VERIFIED'?'current':''}">Đang kiểm</span><span class="status-step ${x.publication_status==='LIVE_VERIFIED'?'current':''}">LIVE đã xác minh</span></div></article>`).join('');
   }
 
+  function buildLegacyPublishLifecycle(model){
+    const groups={not_ready:[],ready_to_schedule:[],scheduled:[],published:[]};
+    const add=(item,preferred)=>{
+      if(!item)return;
+      const url=item.post_url||item.published_url||'';
+      const status=String(item.publication_status||item.status||'').toUpperCase();
+      if(url||['PUBLISHED','PUBLISHED_CHECKING','LIVE_VERIFIED'].includes(status)){groups.published.push(item);return}
+      if(preferred==='scheduled'||(item.owner_decision==='LEN_LICH_DANG'&&item.publish_at)){groups.scheduled.push(item);return}
+      if(preferred==='published'){groups.published.push(item);return}
+      if(item.publish_ready==='YES'||(item.publish_gate&&item.publish_gate.ok)){groups.ready_to_schedule.push(item);return}
+      groups.not_ready.push(item);
+    };
+    (model.publish||[]).forEach(x=>add(x));
+    (model.scheduled||[]).forEach(x=>add(x,'scheduled'));
+    (model.after_publish||[]).forEach(x=>add(x,'published'));
+    return groups;
+  }
+
+  function publishStatus(item){
+    const status=String(item.publication_status||item.status||'').toUpperCase();
+    if(item.post_url||item.published_url||['PUBLISHED','PUBLISHED_CHECKING','LIVE_VERIFIED'].includes(status))return 'Đã đăng';
+    if(item.owner_decision==='LEN_LICH_DANG'&&item.publish_at||item.scheduled_at||status==='SCHEDULED')return 'Đã lên lịch';
+    if(item.publish_ready==='YES'||(item.publish_gate&&item.publish_gate.ok))return 'Đủ điều kiện, chờ chọn lịch';
+    if(item.owner_decision==='SUA_LAI')return 'Cần nghiên cứu lại';
+    return 'Chưa đủ điều kiện lên lịch';
+  }
+
+  function publishReason(item){
+    if(item.publish_block_reason)return item.publish_block_reason;
+    if(item.publish_gate&&Array.isArray(item.publish_gate.reasons))return item.publish_gate.reasons.join('; ');
+    return '';
+  }
+
+  function publishCard(item,index,group){
+    const title=item.title||item.topic_title||item.name||'Chưa có tiêu đề';
+    const url=item.post_url||item.published_url||'';
+    const date=item.publish_at||item.scheduled_at||'';
+    let html='<article class="card publish-card"><h3>'+esc(title)+'</h3><p class="muted">Trạng thái: '+esc(publishStatus(item))+'</p>';
+    const reason=publishReason(item);
+    if(reason)html+='<p class="muted">Lý do chưa lên lịch: '+esc(reason)+'</p>';
+    if(date)html+='<p class="muted">Ngày giờ lên lịch: '+esc(date)+'</p>';
+    if(url)html+='<p class="muted">Link đã đăng: '+esc(url)+'</p>';
+    html+='<div class="actions">';
+    if(group==='not_ready')html+='<button class="btn secondary" data-action="publish" data-index="'+index+'" data-value="SUA_LAI">Nghiên cứu lại</button>';
+    if(group==='ready_to_schedule')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Lên lịch đăng</button>';
+    if(group==='scheduled')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Sửa lịch đăng</button>';
+    if(group==='published'&&/^https?:\/\//i.test(url))html+='<button class="btn secondary" data-action="open-post" data-index="'+index+'">Xem bài đã đăng</button>';
+    html+='</div>';
+    if(group==='ready_to_schedule'||group==='scheduled')html+='<div class="schedule-box" id="publish-schedule-'+index+'"><label>Ngày <input id="publish-date-'+index+'" type="date"></label><label>Giờ <input id="publish-time-'+index+'" type="time"></label><label>Ghi chú <input id="publish-note-'+index+'" type="text"></label><button class="btn primary" data-action="confirm-schedule" data-index="'+index+'">Lưu lịch đăng</button></div>';
+    return html+'</article>';
+  }
+
+  function renderPublish(lifecycle){
+    const groups=lifecycle||{not_ready:[],ready_to_schedule:[],scheduled:[],published:[]};
+    const sections=[['not_ready','publish-not-ready-heading','publish-not-ready-list'],['ready_to_schedule','publish-ready-heading','publish-ready-list'],['scheduled','publish-scheduled-heading','publish-scheduled-list'],['published','publish-published-heading','publish-published-list']];
+    state.publishItems=[];
+    sections.forEach(([group,heading,list])=>{
+      const items=Array.isArray(groups[group])?groups[group]:[];
+      const el=$('#'+list),head=$('#'+heading);
+      if(head)head.hidden=!items.length;
+      if(el)el.innerHTML=items.length?items.map(item=>{const index=state.publishItems.length;state.publishItems.push(item);return publishCard(item,index,group)}).join(''):'<p class="empty">'+(group==='not_ready'?'Có đề tài trong kế hoạch nhưng chưa đủ điều kiện duyệt.':'Không có việc nào trong nhóm này.')+'</p>';
+    });
+    const any=sections.some(([group])=>Array.isArray(groups[group])&&groups[group].length);
+    if(!any&&$('#publish-not-ready-list'))$('#publish-not-ready-list').innerHTML='<p class="empty">Không có việc nào cần quyết định.</p>';
+  }
+
   function publicationLabel(status){
     return ({APPROVED_TO_PUBLISH:'Đã duyệt, chờ người đăng',SCHEDULED:'Đã lên lịch',PUBLISHED_CHECKING:'Đã đăng, đang kiểm tra',LIVE_VERIFIED:'LIVE đã xác minh',REVISION_REQUESTED:'Yêu cầu sửa lại',REJECTED:'Không đăng'})[status]||'Đang xử lý';
   }
@@ -307,8 +376,9 @@
     const i=Number(b.dataset.index||0);
     const action=b.dataset.action;
     if(action==='decision'){const item=(state.model.decisions||[])[i];if(item)decide(item,b.dataset.value)}
-    if(action==='publish'){const item=(state.model.publish||[])[i];if(item)decide(item,b.dataset.value)}
-    if(action==='open-schedule'){const box=$('#schedule-'+i);if(box){box.classList.toggle('open');setScheduleMin(i)}}
+    if(action==='publish'){const item=(state.publishItems||[])[i];if(item)decide(item,b.dataset.value)}
+    if(action==='open-post'){const item=(state.publishItems||[])[i],url=item&&(item.post_url||item.published_url||'');if(/^https?:\/\//i.test(url))window.open(url,'_blank','noopener')}
+    if(action==='open-schedule'){const box=$('#publish-schedule-'+i);if(box){box.classList.toggle('open');setScheduleMin(i)}}
     if(action==='confirm-schedule')schedule(i);
   });
 
@@ -316,17 +386,17 @@
 
   function localDateParts(date){const y=date.getFullYear();const m=String(date.getMonth()+1).padStart(2,'0');const d=String(date.getDate()).padStart(2,'0');const hh=String(date.getHours()).padStart(2,'0');const mm=String(date.getMinutes()).padStart(2,'0');return{date:`${y}-${m}-${d}`,time:`${hh}:${mm}`}}
   function setScheduleMin(i){
-    const dateField=$('#date-'+i),timeField=$('#time-'+i);if(!dateField||!timeField)return;
+    const dateField=$('#publish-date-'+i),timeField=$('#publish-time-'+i);if(!dateField||!timeField)return;
     const parts=localDateParts(new Date());dateField.min=parts.date;if(!dateField.value)dateField.value=parts.date;timeField.min=dateField.value===parts.date?parts.time:'';
     dateField.onchange=()=>{const fresh=localDateParts(new Date());timeField.min=dateField.value===fresh.date?fresh.time:'';if(timeField.min&&timeField.value<timeField.min)timeField.value=timeField.min};
     if(timeField.min&&timeField.value<timeField.min)timeField.value=timeField.min;
   }
   function schedule(i){
-    const item=(state.model.publish||[])[i];if(!item)return;
-    const d=$('#date-'+i).value,t=$('#time-'+i).value;if(!d||!t){toast('Vui lòng chọn ngày và giờ đăng.');return}
+    const item=(state.publishItems||[])[i];if(!item)return;
+    const d=$('#publish-date-'+i).value,t=$('#publish-time-'+i).value;if(!d||!t){toast('Vui lòng chọn ngày và giờ đăng.');return}
     const publishDate=new Date(d+'T'+t);if(isNaN(publishDate.getTime())){toast('Ngày giờ đăng chưa hợp lệ.');return}
     if(publishDate.getTime()<Date.now()-60000){toast('Không thể lên lịch ở thời điểm đã qua.');return}
-    decide(item,'LEN_LICH_DANG',d+'T'+t,$('#note-'+i).value);
+    decide(item,'LEN_LICH_DANG',d+'T'+t,$('#publish-note-'+i).value);
   }
 
   function decide(item,value,publishAt,note){
@@ -367,6 +437,7 @@
       {source:'G1_RESULTS',row_number:2,record_id:'demo-1',decision_type:'SHOULD_DO',title:'Có nên làm bài về rà soát bếp ăn trường học?',why_now:'Tín hiệu chính sách và nhu cầu tìm kiếm cùng hướng về nhóm trường học.',evidence_summary:'Nguồn Chính phủ và dữ liệu tìm kiếm nội bộ cần được đối chiếu.',value_summary:'Có thể tạo nội dung có nhu cầu thật, hỗ trợ SEO và tư vấn dự án trường học.',risk_summary:'Không được diễn giải nội dung pháp lý thành chứng nhận hoặc cam kết đạt chuẩn.',recommendation:'Nên viết nếu Search Console xác nhận có lượt hiển thị hoặc truy vấn phù hợp.',source_title:'Nguồn chính thức',source_url:'https://example.com'},
       {source:'G1_RESULTS',row_number:3,record_id:'demo-2',decision_type:'SHOULD_DO',title:'Có mở benchmark fryer thế hệ mới?',why_now:'Ba đối thủ cùng chuyển sang quản lý dầu, tự động hóa và giao diện vận hành.',evidence_summary:'Nguồn chính thức từ ba hãng đối thủ.',value_summary:'Giúp R&D tìm 3–5 điểm khác biệt đáng thử nghiệm thay vì chỉ so dung tích và công suất.',risk_summary:'Chưa đủ căn cứ để mở dự án sản phẩm mới trước khi hoàn thành so sánh kỹ thuật.',recommendation:'Đồng ý benchmark, chưa cần mở dự án sản phẩm mới.'}
     ],publish:[
+      {source:'CONTENT',row_number:1,record_id:'demo-2a',decision_type:'PUBLISH',title:'Bài kế hoạch cần bổ sung căn cứ trước khi đăng',target_site:'hatiencorp.vn',publish_ready:'NO',publish_block_reason:'Chưa đủ căn cứ và bản xem trước hoàn chỉnh.'},
       {source:'CONTENT',row_number:2,record_id:'demo-3',decision_type:'PUBLISH',title:'Checklist rà soát bếp ăn trường học trước năm học mới',target_site:'hatiencorp.vn',why_now:'Bản hoàn chỉnh đã qua kiểm tra và đang chờ quyết định xuất bản.',approval_scope:'Duyệt toàn bộ bài, ảnh, CTA và lịch đăng',standard_status:'Đã áp dụng Tiêu chuẩn bài website Hà Tiên v2.1',business_value:'Tăng uy tín chuyên môn, hỗ trợ SEO nhóm trường học và tạo đầu vào tư vấn audit.',evidence_summary:'Nguồn chính thức + checklist kỹ thuật nội bộ đã kiểm.',primary_keyword:'rà soát bếp ăn trường học',search_intent:'Tìm hướng dẫn/checklist trước đợt kiểm tra',cta:'Đăng ký rà soát bếp trường học',qa_status:'PASS',seo_score:'86/100',planned_url:'https://hatiencorp.vn/checklist-ra-soat-bep-an-truong-hoc',publish_ready:'YES',preview_url:'https://example.com',publish_gate:{ok:true,reasons:[]}}
     ],scheduled:[
       {source:'CONTENT',row_number:4,record_id:'demo-4',title:'Cách tính công suất bếp ăn công ty theo số suất và giờ phục vụ',target_site:'hatiencorp.vn',publish_at:tomorrow.toISOString(),owner_note:'Đăng buổi sáng.',preview_url:'https://example.com',publication_status:'SCHEDULED'}

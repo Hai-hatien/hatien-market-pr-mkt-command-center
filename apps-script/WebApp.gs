@@ -15,8 +15,10 @@ function getMarketDashboardModel() {
   const shouldDo = shouldDoCandidates.filter(x => htmIsOwnerUndecided_(x.owner_decision)).slice(0, 10);
   const publishPending = htmGetDecisionItems_(true);
   const publishScheduled = htmGetScheduledPublishItems_();
+  const publishLifecycle = htmGetPublishLifecycleItems_();
   const decided = htmGetDecidedItems_();
   const signals = htmGetRecentSignals_(8);
+  const lifecycle = htmBuildPublishLifecycleGroups_(publishLifecycle);
 
   return {
     ok: true,
@@ -25,8 +27,9 @@ function getMarketDashboardModel() {
     overview: {
       needs_decision: shouldDo.length,
       needs_decision_candidates: shouldDoCandidates.length,
-      waiting_publish: publishPending.length,
-      scheduled_publish: publishScheduled.length,
+      waiting_publish: lifecycle.not_ready.length + lifecycle.ready_to_schedule.length,
+      scheduled_publish: lifecycle.scheduled.length,
+      published_count: lifecycle.published.length,
       recent_signals: signals.length,
       summary: shouldDo.length || publishPending.length
         ? 'Có ' + (shouldDo.length + publishPending.length) + ' việc cần anh Hải xem.'
@@ -37,7 +40,8 @@ function getMarketDashboardModel() {
     decisions_candidates: shouldDoCandidates,
     decided,
     publish: publishPending,
-    scheduled: publishScheduled
+    scheduled: publishScheduled,
+    publish_lifecycle: lifecycle
   };
 }
 
@@ -136,6 +140,61 @@ function htmGetDecisionItems_(onlyPending) {
     .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
 }
 
+function htmGetPublishLifecycleItems_() {
+  return htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'PUBLISH', false, true);
+}
+
+function htmBuildPublishLifecycleGroups_(items) {
+  const notReady = [];
+  const readyToSchedule = [];
+  const scheduled = [];
+  const published = [];
+
+  (items || []).forEach(item => {
+    const decision = String(item.owner_decision || '').toUpperCase().replace(/[\s_-]/g, '');
+    const publishStatus = String(item.publication_status || '').toUpperCase().replace(/[\s_-]/g, '');
+    const hasPublishedUrl = /^https?:\/\//i.test(String(item.post_url || ''));
+    const publishReady = String(item.publish_ready || '').toUpperCase().replace(/[\s_-]/g, '') === 'YES';
+
+    if (publishStatus === 'PUBLISHED' || publishStatus === 'PUBLISHEDCHECKING' || publishStatus === 'LIVEVERIFIED' || hasPublishedUrl) {
+      published.push(item);
+      return;
+    }
+    if (decision === 'LEN_LICH_DANG' && item.publish_at) {
+      scheduled.push(item);
+      return;
+    }
+    if (decision === 'SUA_LAI' || publishReady === 'NO' || publishStatus === 'REVISIONREQUESTED') {
+      notReady.push(item);
+      return;
+    }
+    if (decision === 'KHONG_DANG') {
+      notReady.push(item);
+      return;
+    }
+    if (decision === 'DANG_NGAY' || publishReady || (decision && !['CHUAQUYETDINH',''].includes(decision))) {
+      readyToSchedule.push(item);
+      return;
+    }
+    if (htmIsOwnerUndecided_(item.owner_decision)) {
+      notReady.push(item);
+      return;
+    }
+    readyToSchedule.push(item);
+  });
+
+  [notReady, readyToSchedule, scheduled, published].forEach(group => {
+    group.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+  });
+
+  return {
+    not_ready: notReady,
+    ready_to_schedule: readyToSchedule,
+    scheduled,
+    published
+  };
+}
+
 function htmGetDecidedItems_() {
   const items = [];
   items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.G1_RESULTS, 'G1_RESULTS', 'SHOULD_DO', false, true));
@@ -171,6 +230,10 @@ function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePending
       decision_required: required,
       owner_decision: ownerDecision,
       owner_decided_at: read(row, ['owner_decided_at'], ''),
+      publication_status: read(row, ['publication_status', 'publish_status'], ''),
+      post_url: read(row, ['post_url', 'wp_post_url', 'published_url', 'live_url'], ''),
+      publish_ready: read(row, ['publish_ready', 'ready_to_publish', 'publish_ok'], ''),
+      publish_block_reason: read(row, ['publish_block_reason', 'publish_reason', 'block_reason', 'reason_not_ready'], ''),
       title: read(row, ['decision_title', 'Working Title', 'title', 'content_title', 'seo_title', 'finding', 'Core message'], 'Việc cần xem'),
       why_now: read(row, ['reason_to_decide', 'Decision / Notes', 'why_now', 'business_case', 'impact_hatien'], ''),
       value_summary: read(row, ['value_summary', 'impact_hatien', 'business_value', 'expected_value', 'Affected product/customer'], ''),
