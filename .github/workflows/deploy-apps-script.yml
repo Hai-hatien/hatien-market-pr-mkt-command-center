@@ -1,0 +1,167 @@
+# Deploy retry after CLASPRC_JSON refresh on 2026-08-28
+name: Deploy Apps Script Web App
+
+on:
+  push:
+    branches:
+      - recovery/ht-market-pr-mkt-20260825
+    paths:
+      - 'apps-script/**'
+      - '.clasp.json'
+      - 'tests/**'
+      - 'scripts/resolve-agent-model.mjs'
+      - 'marketing-agent-pack/governance/model-routing.json'
+      - 'marketing-agent-pack/governance/model-routing.md'
+      - '.github/workflows/deploy-apps-script.yml'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Push source and create/update Web App deployment'
+        required: true
+        default: true
+        type: boolean
+      description:
+        description: 'Deployment description'
+        required: false
+        default: 'HT Market Command Center deployment'
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ht-market-apps-script-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate required Google credential
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "Missing GitHub secret: CLASPRC_JSON"
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+
+      - name: Run source contracts
+        run: |
+          node tests/mobile-ux-contract.mjs
+          node tests/backend-contract.mjs
+          node tests/case-acceptance-contract.mjs
+          node tests/model-routing-contract.mjs
+
+      - name: Verify clasp project binding and preserved bridge
+        run: |
+          test -f .clasp.json
+          node -e "const c=require('./.clasp.json'); if(!c.scriptId||c.rootDir!=='apps-script') process.exit(1); console.log('Bound script:', c.scriptId.slice(0,8)+'…'+c.scriptId.slice(-6));"
+          test -f apps-script/Legacy_Config.gs
+          test -f apps-script/Legacy_Push_CommandCenter.gs
+          test -f apps-script/Legacy_Scheduler.gs
+          grep -q 'function runCommandCenterPush' apps-script/Legacy_Push_CommandCenter.gs
+          grep -q 'function installDailyTriggers' apps-script/Legacy_Scheduler.gs
+          echo "Existing bridge functions are preserved in the deployment source."
+
+      - name: Pull and back up current Apps Script project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/htm-clasp-read remote-backup
+          mkdir -p /tmp/htm-clasp-read
+          cp .clasp.json /tmp/htm-clasp-read/.clasp.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = '/tmp/htm-clasp-read/.clasp.json';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+          config.rootDir = 'pulled';
+          fs.writeFileSync(path, JSON.stringify(config, null, 2));
+          NODE
+          cd /tmp/htm-clasp-read
+          npx -y @google/clasp@3.4.0 pull | tee "$GITHUB_WORKSPACE/clasp-pull.log"
+          manifest_abs=$(find /tmp/htm-clasp-read/pulled -type f -name appsscript.json -print -quit)
+          test -n "$manifest_abs"
+          echo "Apps Script API read access confirmed."
+          cd "$GITHUB_WORKSPACE"
+          cp -R /tmp/htm-clasp-read/pulled remote-backup
+          cp "$manifest_abs" remote-appsscript.json
+          find remote-backup -maxdepth 3 -type f -print | sort | tee remote-files.txt
+
+      - name: Push preserved source overlay to Apps Script
+        if: ${{ github.event_name == 'push' || inputs.deploy }}
+        run: npx -y @google/clasp@3.4.0 push --force
+
+      - name: Update stable Web App deployment
+        if: ${{ github.event_name == 'push' || inputs.deploy }}
+        env:
+          HT_DEPLOYMENT_ID: ${{ secrets.HT_DEPLOYMENT_ID || vars.HT_DEPLOYMENT_ID || 'AKfycbzzAteIFxUfLAgp-PMlL4mdrHgyslnecWL5b7AmkGVJn2HSmwVMQ9K7sM6MY5S_6ces' }}
+          DEPLOY_DESCRIPTION: ${{ inputs.description || 'HT Market Command Center stable preview' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @google/clasp@3.4.0 create-deployment \
+            --deploymentId "$HT_DEPLOYMENT_ID" \
+            --description "$DEPLOY_DESCRIPTION" | tee deployment-output.txt
+          npx -y @google/clasp@3.4.0 list-deployments | tee deployments.txt
+          if ! grep -q "$HT_DEPLOYMENT_ID" deployments.txt; then
+            echo "Stable deployment ID was not returned by Apps Script."
+            exit 1
+          fi
+          echo "$HT_DEPLOYMENT_ID" > deployment-id.txt
+          echo "https://script.google.com/macros/s/${HT_DEPLOYMENT_ID}/exec" > web-app-url.txt
+          cat web-app-url.txt
+
+      - name: Comment preview URL on PR
+        if: ${{ hashFiles('web-app-url.txt') != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const url = fs.readFileSync('web-app-url.txt', 'utf8').trim();
+            const { owner, repo } = context.repo;
+            const prs = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: `${owner}:recovery/ht-market-pr-mkt-20260825`
+            });
+            if (prs.data.length) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prs.data[0].number,
+                body: `Apps Script stable preview updated for \`${context.sha}\`:\n\n${url}`
+              });
+            }
+
+      - name: Upload deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apps-script-deploy-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            clasp-pull.log
+            remote-appsscript.json
+            remote-files.txt
+            remote-backup/**
+            deployment-output.txt
+            deployments.txt
+            deployment-id.txt
+            web-app-url.txt
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,95 @@
+{
+  "project": "HT-MARKET-PRMKT-V1",
+  "version": "1.0.0",
+  "updated_at": "2026-08-28",
+  "source_branch": "recovery/ht-market-pr-mkt-20260825",
+  "rules": {
+    "done_requires_runtime_evidence": true,
+    "demo_is_not_production": true,
+    "owner_approval_is_not_auto_publish": true,
+    "public_claim_requires_g7": true
+  },
+  "cases": [
+    {
+      "id": "MKTCASE-20260828-001",
+      "name": "Dashboard duyệt mobile và UAT an toàn",
+      "priority": "P0",
+      "owner": "Coding Agent + Tester",
+      "implementation_status": "READY_FOR_TEST",
+      "runtime_evidence_env": "TESTER_SHEET_E2E_RESULT",
+      "required_files": ["apps-script/Index.html", "apps-script/WebApp.gs", "apps-script/UATService.gs", "apps-script/TesterService.gs", "tests/mobile-ux-contract.mjs"],
+      "acceptance": [
+        "Chế độ demo không gọi backend và không ghi Google Sheet",
+        "Ba màn mobile hoạt động ở 360 và 390 px, không tràn ngang",
+        "Quyết định ghi đúng dòng, có lock, chống ghi đè và kiểm record ID",
+        "Không cho lên lịch trong quá khứ",
+        "Có fixture UAT tiền tố UAT- và chức năng dọn dữ liệu UAT",
+        "Không gọi production khi chưa có end-to-end Sheet thật"
+      ]
+    },
+    {
+      "id": "MKTCASE-20260828-002",
+      "name": "Google Search Console và dữ liệu tìm kiếm thật",
+      "priority": "P0",
+      "owner": "Performance Analyst + Tester",
+      "implementation_status": "READY_FOR_TEST",
+      "runtime_evidence_env": "TESTER_GSC_REAL_RESULT",
+      "required_files": ["apps-script/GSCCollector.gs", "apps-script/TesterService.gs", "apps-script/appsscript.json"],
+      "acceptance": [
+        "Kết nối trực tiếp Google Search Console, không dùng GSC Wizard",
+        "Nhìn thấy cả hatiencorp.vn và hatiengroup.com",
+        "Ghi dữ liệu thật vào GSC_Daily",
+        "Có click, impression, CTR, position, query và page",
+        "Báo cáo phân biệt source code với dữ liệu thật sau OAuth"
+      ]
+    },
+    {
+      "id": "MKTCASE-20260828-003",
+      "name": "Nghiên cứu thị trường hằng ngày theo tín hiệu",
+      "priority": "P0",
+      "owner": "MKT Strategist + G0",
+      "implementation_status": "READY_FOR_TEST",
+      "runtime_evidence_env": "TESTER_DAILY_RESEARCH_RESULT",
+      "required_files": ["marketing-agent-pack/.agents/g0-case-controller.md", "marketing-agent-pack/schedules/daily-market-research-0630.md", "marketing-agent-pack/cases/CASE-03-DAILY-RESEARCH.md"],
+      "acceptance": [
+        "Quét Google Trends, đối thủ, chính sách và Search Console",
+        "Không đẩy enquiry thô lên anh Hải",
+        "Tín hiệu phải được chuyển thành khách hàng, pain, cơ hội, giá trị, rủi ro và hành động",
+        "Chỉ tạo quyết định khi đủ căn cứ và đúng quyền",
+        "Có bằng chứng run hằng ngày và dữ liệu ghi vào Sheet"
+      ]
+    },
+    {
+      "id": "MKTCASE-20260828-004",
+      "name": "Business Case nội dung và cổng duyệt xuất bản",
+      "priority": "P0",
+      "owner": "Content Producer + G7 + Tester",
+      "implementation_status": "READY_FOR_TEST",
+      "runtime_evidence_env": "TESTER_CONTENT_UAT_RESULT",
+      "required_files": ["apps-script/Index.html", "apps-script/WebApp.gs", "marketing-agent-pack/cases/CASE-04-CONTENT-PUBLISH-GATE.md"],
+      "acceptance": [
+        "Hiển thị tiêu chuẩn bài viết, giá trị thương hiệu/SEO/sales/uy tín",
+        "Hiển thị từ khóa, search intent, CTA, QA, SEO score, URL và phạm vi duyệt",
+        "Chỉ mở duyệt đăng/lên lịch khi publish_ready=YES, QA đạt và có preview",
+        "Duyệt đề tài không đồng nghĩa duyệt xuất bản",
+        "Có trạng thái sau duyệt và sau đăng; không tự ghi LIVE"
+      ]
+    },
+    {
+      "id": "MKTCASE-20260828-005",
+      "name": "Chuyển tín hiệu thị trường thành cơ hội R&D sản phẩm",
+      "priority": "P1",
+      "owner": "Product R&D Liaison + G7",
+      "implementation_status": "READY_FOR_TEST",
+      "runtime_evidence_env": "TESTER_RD_UAT_RESULT",
+      "required_files": ["marketing-agent-pack/.agents/product-rd-liaison.md", "marketing-agent-pack/cases/CASE-05-RD-OPPORTUNITY.md", "marketing-agent-pack/governance/decision-pack-template.md"],
+      "acceptance": [
+        "Tín hiệu có use case, pain, outcome, constraints và evidence",
+        "Phân biệt benchmark đối thủ với đặc tính Hà Tiên",
+        "Không tự mở dự án R&D hoặc tạo SKU/model",
+        "Đề xuất có giả thuyết, test tối thiểu, rủi ro, owner và KPI",
+        "Chỉ trình anh Hải khi đủ lý do và có đánh đổi cần quyết định"
+      ]
+    }
+  ]
+}

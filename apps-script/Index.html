@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f4ee">
+  <title>Hà Tiên — Market Command Center</title>
+  <style>
+    :root{
+      --bg:#f7f4ee;--card:#fff;--text:#20201e;--muted:#6b675f;--line:#e3dcd0;
+      --gold:#b48747;--gold-dark:#765522;--soft:#eee7db;--soft-2:#faf7f1;
+      --danger:#8b3030;--danger-bg:#f7eaea;--ok:#285c3d;--ok-bg:#e8f1eb;
+      --warn:#7a5413;--warn-bg:#f7eed8;--shadow:0 8px 26px rgba(31,25,16,.055)
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg);color-scheme:light;overflow-x:hidden}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:"Roboto",Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    button,input,textarea{font:inherit}
+    button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid rgba(180,135,71,.45);outline-offset:2px}
+    .app{width:min(100%,720px);min-height:100vh;margin:0 auto;padding:0 14px calc(98px + env(safe-area-inset-bottom));overflow-x:hidden}
+    .top{position:sticky;top:0;z-index:5;margin:0 -2px;padding:14px 2px 11px;background:rgba(247,244,238,.97);border-bottom:1px solid rgba(227,220,208,.9)}
+    .brand{display:flex;align-items:center;gap:12px;min-width:0}
+    .brand-logo{display:block;width:92px;max-width:34vw;height:auto;object-fit:contain;flex:0 0 auto}
+    .brand-copy{min-width:0}
+    .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#806236;font-weight:800}
+    .top h1{margin:5px 0 3px;font-size:25px;line-height:1.16}
+    .sub{font-size:13px;color:var(--muted);line-height:1.45}
+    .demo-banner{display:none;margin-top:9px;padding:9px 11px;border:1px solid #e5c989;border-radius:11px;background:#fff7df;color:#67470e;font-size:12px;line-height:1.4;font-weight:700}
+    .demo-banner.show{display:block}
+    .screen{display:none;padding-top:14px}
+    .screen.active{display:block}
+    .hero{padding:17px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow-wrap:anywhere}
+    .hero-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .hero .big{font-size:34px;line-height:1;font-weight:850}
+    .hero p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:13px}
+    .quick-actions{display:grid;gap:8px;margin-top:13px}
+    .metric{min-width:0;padding:11px 5px;background:var(--soft);border-radius:13px;text-align:center}
+    .metric strong{display:block;font-size:20px}
+    .metric span{display:block;margin-top:3px;color:var(--muted);font-size:9.5px;line-height:1.25}
+    .section-title{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:20px 2px 10px}
+    .section-title h2{margin:0;font-size:18px;line-height:1.25}
+    .section-title span{color:var(--muted);font-size:11px;text-align:right}
+    .list{display:grid;gap:10px}
+    .card{min-width:0;padding:15px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 5px 18px rgba(31,25,16,.035);overflow-wrap:anywhere}
+    .card h3{margin:0 0 8px;font-size:17px;line-height:1.36}
+    .tag{display:inline-flex;align-items:center;margin-bottom:8px;padding:5px 8px;border-radius:999px;background:var(--soft);color:#5c4b30;font-size:10px;font-weight:800}
+    .tag.scheduled,.tag.ready{background:var(--ok-bg);color:var(--ok)}
+    .tag.waiting{background:var(--warn-bg);color:var(--warn)}
+    .tag.problem{background:var(--danger-bg);color:var(--danger)}
+    .meta{margin-bottom:8px;color:var(--muted);font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+    .body{color:#37342f;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+    .body+.body{margin-top:6px}
+    .recommend{margin-top:10px;padding:10px 11px;background:var(--soft-2);border-left:3px solid var(--gold);border-radius:8px;color:#403a31;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+    .source{display:inline-block;max-width:100%;margin-top:10px;color:var(--gold-dark);font-size:12px;text-decoration:none;overflow-wrap:anywhere}
+    .source:after{content:' ↗'}
+    .facts{display:grid;grid-template-columns:1fr;gap:7px;margin-top:11px}
+    .fact{padding:9px 10px;border:1px solid #eee5d8;border-radius:11px;background:#fcfaf6;font-size:12.5px;line-height:1.45;overflow-wrap:anywhere}
+    .fact b{color:#4b4337}
+    details.more{margin-top:11px;border-top:1px solid #eee7dc;padding-top:9px}
+    details.more summary{min-height:44px;display:flex;align-items:center;color:var(--gold-dark);font-size:13px;font-weight:800;cursor:pointer;list-style:none}
+    details.more summary::-webkit-details-marker{display:none}
+    details.more summary:after{content:'＋';margin-left:auto}
+    details.more[open] summary:after{content:'−'}
+    .quality-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px}
+    .quality-item{min-width:0;padding:9px;border:1px solid #eee5d8;border-radius:10px;background:#fff;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+    .quality-item span{display:block;color:var(--muted);font-size:10px;margin-bottom:3px}
+    .gate{margin-top:11px;padding:10px 11px;border-radius:11px;font-size:12.5px;line-height:1.45}
+    .gate.ok{background:var(--ok-bg);color:var(--ok)}
+    .gate.blocked{background:var(--warn-bg);color:var(--warn)}
+    .actions,.publish-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+    .btn{min-width:0;min-height:48px;border:0;border-radius:13px;padding:11px 12px;font-weight:800;cursor:pointer;line-height:1.25}
+    .btn.primary{background:var(--text);color:#fff}
+    .btn.gold{background:var(--gold);color:#fff}
+    .btn.soft{background:var(--soft);color:var(--text)}
+    .btn.danger{background:var(--danger-bg);color:var(--danger)}
+    .btn:disabled{opacity:.46;cursor:not-allowed}
+    .decision-note{margin-top:9px;color:var(--muted);font-size:11px;line-height:1.4}
+    .schedule-box{display:none;margin-top:10px;padding:11px;background:var(--soft-2);border:1px solid #eee4d3;border-radius:13px}
+    .schedule-box.open{display:block}
+    .schedule-site{margin-bottom:9px;color:#4f493f;font-size:12px;line-height:1.4}
+    .schedule-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .schedule-row>*{min-width:0}
+    .field{width:100%;min-width:0;min-height:46px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text)}
+    textarea.field{min-height:70px;margin-top:8px;resize:vertical}
+    .schedule-confirm{width:100%;margin-top:8px}
+    .scheduled-time{margin-top:4px;font-size:14px;font-weight:800}
+    .status-flow{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+    .status-step{padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:10px;font-weight:700}
+    .status-step.current{background:var(--ok-bg);color:var(--ok)}
+    .empty{padding:27px 17px;background:var(--card);border:1px dashed #d6cfc3;border-radius:18px;color:var(--muted);font-size:14px;line-height:1.5;text-align:center}
+    .publish-tools{display:grid;gap:9px;margin:14px 0}
+    .publish-search{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text)}
+    .filter-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .filter-chip{padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
+    .filter-chip.active{border-color:#b48747;background:#f1e8d8;color:#654816}
+    .publish-group-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+    .publish-group-toggle h2{margin:0}
+    .publish-group-toggle .group-chevron{color:var(--muted);font-size:16px}
+    .publish-group-toggle[aria-expanded="false"] .group-chevron{transform:rotate(-90deg)}
+    .publish-detail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    .publish-detail[hidden]{display:none}
+    .publish-more{margin-top:10px;width:100%}
+    .loading{padding:36px 0;color:var(--muted);text-align:center}
+    .bottom{position:fixed;z-index:10;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:7px max(10px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));background:rgba(255,255,255,.98);border-top:1px solid var(--line)}
+    .nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;width:min(720px,100%)}
+    .nav button{min-width:0;min-height:54px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-size:10px;line-height:1.15}
+    .nav button b{display:block;margin-bottom:4px;font-size:18px;line-height:1}
+    .nav button.active{background:var(--soft);color:var(--text);font-weight:800}
+    .toast{position:fixed;z-index:20;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));max-width:calc(100vw - 28px);padding:11px 14px;transform:translateX(-50%);border-radius:12px;background:#171717;color:#fff;font-size:13px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .18s}
+    .toast.show{opacity:1}
+    .error{padding:18px;border:1px solid #ead1d1;border-radius:16px;background:#fff6f6;color:#773333;font-size:14px;line-height:1.5}
+    @media (max-width:420px){.metrics{grid-template-columns:1fr 1fr}}
+    @media (max-width:380px){
+      .app{padding-left:12px;padding-right:12px}
+      .brand{gap:9px}
+      .brand-logo{width:80px;max-width:31vw}
+      .top h1{font-size:23px}
+      .schedule-row,.quality-grid{grid-template-columns:1fr}
+      .publish-actions{grid-template-columns:1fr}
+    }
+    @media (min-width:700px){
+      .app{padding-left:20px;padding-right:20px}
+      .brand-logo{width:110px}
+      .top h1{font-size:29px}
+      .actions,.publish-actions{grid-template-columns:repeat(4,1fr)}
+      .facts{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <img class="brand-logo" src="https://hatiencorp.vn/wp-content/uploads/2020/05/logo-web-hatien-corp.png" alt="Hà Tiên Corp">
+      <div class="brand-copy">
+        <div class="eyebrow">Hà Tiên · Thị trường & nội dung</div>
+        <h1 id="greeting">Chào anh Hải</h1>
+        <div class="sub" id="generated">Đang lấy dữ liệu mới nhất…</div>
+      </div>
+    </div>
+    <div id="demo-banner" class="demo-banner">CHẾ ĐỘ XEM THỬ — mọi nút chỉ mô phỏng trên máy, không ghi Google Sheet và không đăng website.</div>
+  </header>
+
+  <main>
+    <section id="screen-overview" class="screen active" aria-labelledby="overview-heading">
+      <div id="overview-loading" class="loading">Đang tổng hợp sáng nay…</div>
+      <div id="overview-content" hidden>
+        <div class="hero">
+          <div class="hero-row"><div><div class="big" id="overview-total">0</div><p id="overview-summary">Sáng nay chưa có việc nào cần anh Hải quyết định.</p></div></div>
+          <div class="metrics">
+            <div class="metric"><strong id="metric-decisions">0</strong><span>Cần quyết định</span></div>
+            <div class="metric"><strong id="metric-publish">0</strong><span>Chờ duyệt đăng</span></div>
+            <div class="metric"><strong id="metric-scheduled">0</strong><span>Đã lên lịch</span></div>
+            <div class="metric"><strong id="metric-signals">0</strong><span>Tín hiệu mới</span></div>
+          </div>
+          <div class="quick-actions">
+            <button id="view-all-pending" class="btn gold" type="button">Xem toàn bộ hàng chờ</button>
+          </div>
+        </div>
+        <div class="section-title"><h2 id="overview-heading">Đáng chú ý sáng nay</h2><span id="signal-count"></span></div>
+        <div id="signals-list" class="list"></div>
+      </div>
+    </section>
+
+    <section id="screen-decisions" class="screen" aria-labelledby="decision-heading">
+      <div class="section-title"><h2 id="decision-heading">Việc cần anh quyết định</h2><span id="decision-count"></span></div>
+      <div id="decisions-list" class="list"></div>
+    </section>
+
+    <section id="screen-decided" class="screen" aria-labelledby="decided-heading">
+      <div class="section-title"><h2 id="decided-heading">Đã quyết định</h2><span id="decided-count"></span></div>
+      <div id="decided-list" class="list"></div>
+    </section>
+
+    <section id="screen-publish" class="screen" aria-labelledby="publish-heading">
+      <div class="section-title"><h2 id="publish-heading">Tin lên lịch đăng</h2><span id="publish-count"></span></div>
+      <div class="publish-tools"><input id="publish-search" class="publish-search" type="search" placeholder="Tìm theo tiêu đề, trạng thái hoặc website" aria-label="Tìm tin lên lịch đăng"><div id="publish-filters" class="filter-chips"><button class="filter-chip active" data-action="publish-filter" data-filter="all">Tất cả</button><button class="filter-chip" data-action="publish-filter" data-filter="not_ready">Chưa đủ điều kiện</button><button class="filter-chip" data-action="publish-filter" data-filter="ready_to_schedule">Chờ chọn lịch</button><button class="filter-chip" data-action="publish-filter" data-filter="scheduled">Đã lên lịch</button><button class="filter-chip" data-action="publish-filter" data-filter="published">Đã đăng</button><button class="filter-chip" data-action="publish-filter" data-filter="needs_research">Cần nghiên cứu lại</button><button class="filter-chip" data-action="publish-filter" data-filter="has_link">Có link đăng</button><button class="filter-chip" data-action="publish-filter" data-filter="no_link">Chưa có link</button></div></div>
+      <div id="publish-not-ready-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="not_ready" aria-expanded="true"><h2>Chưa đủ điều kiện lên lịch</h2><span><span id="publish-not-ready-count"></span> <span class="group-chevron">⌄</span></span></button></div>
+      <div id="publish-not-ready-list" class="list"></div>
+      <div id="publish-ready-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="ready_to_schedule" aria-expanded="true"><h2>Đủ điều kiện, chờ chọn lịch</h2><span><span id="publish-ready-count"></span> <span class="group-chevron">⌄</span></span></button></div>
+      <div id="publish-ready-list" class="list"></div>
+      <div id="publish-scheduled-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="scheduled" aria-expanded="true"><h2>Đã lên lịch</h2><span><span id="publish-scheduled-count"></span> <span class="group-chevron">⌄</span></span></button></div>
+      <div id="publish-scheduled-list" class="list"></div>
+      <div id="publish-published-heading" class="section-title" hidden><button class="publish-group-toggle" data-action="publish-toggle" data-group="published" aria-expanded="true"><h2>Đã đăng</h2><span><span id="publish-published-count"></span> <span class="group-chevron">⌄</span></span></button></div>
+      <div id="publish-published-list" class="list"></div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom" aria-label="Điều hướng chính">
+  <div class="nav">
+    <button class="active" data-screen="overview" aria-label="Tổng quan"><b aria-hidden="true">⌂</b>Tổng quan</button>
+    <button data-screen="decisions" aria-label="Việc cần quyết định"><b aria-hidden="true">✓</b>Cần quyết định</button>
+    <button data-screen="decided" aria-label="Đã quyết định"><b aria-hidden="true">✓</b>Đã quyết định</button>
+    <button data-screen="publish" aria-label="Bài chờ đăng và lịch đăng"><b aria-hidden="true">◷</b>Chờ đăng</button>
+  </div>
+</nav>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+  const params=new URLSearchParams(location.search);
+  const state={model:null,busy:false,demo:params.get('demo')==='1',publishItems:[],publishLifecycle:null,publishView:{query:'',filter:'all',limits:{not_ready:5,ready_to_schedule:5,scheduled:5,published:5},open:{not_ready:true,ready_to_schedule:true,scheduled:true,published:true},details:{}}};
+  const $=s=>document.querySelector(s);
+  const $$=s=>Array.from(document.querySelectorAll(s));
+  const esc=s=>String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const ownerText=s=>String(s??'')
+    .replace(/\bPENDING_G0_G7\b/gi,'đang chờ kiểm tra')
+    .replace(/\bPENDING_G[0-8]\b/gi,'đang chờ kiểm tra')
+    .replace(/\bACT_NOW\b:?/g,'Nên làm ngay')
+    .replace(/\bWATCH\b:?/g,'Theo dõi thêm')
+    .replace(/\bRESEARCH_MORE\b:?/g,'Nghiên cứu thêm')
+    .replace(/\bIGNORE\b:?/g,'Bỏ qua')
+    .replace(/\bSOURCE_VERIFIED\b/gi,'đã xác minh nguồn')
+    .replace(/\bG[0-8]\b/g,'AI')
+    .replace(/\bclaim\b/gi,'nội dung cần kiểm chứng')
+    .replace(/\bgate\b/gi,'bước kiểm tra')
+    .replace(/\bRun ID\b/gi,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+  const vi=ownerText;
+  const isRealUrl=url=>{const value=String(url||'').toLowerCase();return value.indexOf('http'+':'+'/'+'/')===0||value.indexOf('https'+':'+'/'+'/')===0};
+  const link=(url,label)=>!isRealUrl(url)?'':`<a class="source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(ownerText(label||'Xem nguồn'))}</a>`;
+  const fmtTime=s=>{if(!s)return'';try{return new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(s))}catch(_){return String(s)}};
+  const fmtPublish=s=>{if(!s)return'';try{return new Intl.DateTimeFormat('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(s))}catch(_){return String(s)}};
+  const present=(label,value)=>value?`<div class="fact"><b>${esc(label)}:</b> ${esc(ownerText(value))}</div>`:'';
+  const quality=(label,value)=>value?`<div class="quality-item"><span>${esc(label)}</span><b>${esc(ownerText(value))}</b></div>`:'';
+  const isUndecidedOwner = value => {
+    const normalized = String(value || '').trim().toUpperCase().replace(/[\s_-]/g,'');
+    return !normalized || normalized === 'CHUAQUYETDINH';
+  };
+
+  function switchScreen(name){
+    $$('.screen').forEach(x=>x.classList.toggle('active',x.id===`screen-${name}`));
+    $$('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.screen===name));
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  $$('.nav button').forEach(b=>b.addEventListener('click',()=>switchScreen(b.dataset.screen)));
+
+  function render(model){
+    state.model=model||{};
+    const o=state.model.overview||{};
+    $('#demo-banner').classList.toggle('show',state.demo);
+    $('#greeting').textContent=ownerText(state.model.greeting||'Chào anh Hải');
+    $('#generated').textContent=(state.demo?'Dữ liệu xem thử · ':'')+(state.model.generated_at?'Cập nhật '+fmtTime(state.model.generated_at):'Dữ liệu mới nhất');
+    $('#overview-total').textContent=(o.needs_decision||0)+(o.waiting_publish||0);
+    $('#overview-summary').textContent=ownerText(o.summary||'Sáng nay chưa có việc nào cần anh Hải quyết định.');
+    $('#metric-decisions').textContent=o.needs_decision||0;
+    $('#metric-publish').textContent=o.waiting_publish||0;
+    $('#metric-scheduled').textContent=o.scheduled_publish||0;
+    $('#metric-signals').textContent=o.recent_signals||0;
+    $('#overview-loading').hidden=true;
+    $('#overview-content').hidden=false;
+    renderSignals(state.model.signals||[]);
+    renderDecisions(state.model.decisions||[], state.model.decisions_candidates||[]);
+    renderDecided(state.model.decided||[]);
+  renderPublish(state.model.publish_lifecycle||buildLegacyPublishLifecycle(state.model));
+  }
+
+  function renderSignals(items){
+    $('#signal-count').textContent=items.length?items.length+' tín hiệu':'';
+    const el=$('#signals-list');
+    if(!items.length){el.innerHTML='<div class="empty">Chưa có tín hiệu mới đáng chú ý trong khoảng thời gian gần đây.</div>';return}
+    el.innerHTML=items.map(x=>`<article class="card"><div class="tag">Tín hiệu thị trường</div><h3>${esc(ownerText(x.title))}</h3>${x.detail?`<div class="body">${esc(ownerText(x.detail))}</div>`:''}${x.recommendation?`<div class="recommend"><b>Đề xuất:</b> ${esc(vi(x.recommendation))}</div>`:''}${link(x.source_url,x.source_title||'Xem nguồn')}</article>`).join('');
+  }
+
+  function renderDecisions(items, candidates){
+    const candidateList = (candidates || items || [])
+      .filter(x => String(x.decision_type || '').toUpperCase() === 'SHOULD_DO')
+      .filter(x => String(x.decision_required || '').toUpperCase() === 'YES')
+      .filter(x => isUndecidedOwner(x.owner_decision));
+    const filtered = (items || [])
+      .filter(x => String(x.decision_type || '').toUpperCase() === 'SHOULD_DO')
+      .filter(x => String(x.decision_required || '').toUpperCase() === 'YES')
+      .filter(x => isUndecidedOwner(x.owner_decision))
+      .slice(0, 10);
+    $('#decision-count').textContent=filtered.length?`${filtered.length} việc`:'';
+    const el=$('#decisions-list');
+    if(!filtered.length){
+      const hasPotential = candidateList.length > 0;
+      el.innerHTML = hasPotential
+        ? '<div class="empty">Có đề tài trong kế hoạch nhưng chưa đủ điều kiện duyệt.</div>'
+        : '<div class="empty">Không có việc nào cần quyết định.</div>';
+      return;
+    }
+    el.innerHTML=filtered.map((x,i)=>`<article class="card"><div class="tag">Có nên làm / viết không?</div><h3>${esc(ownerText(x.title))}</h3><div class="facts">${present('Vì sao cần xem lúc này',x.why_now)}${present('Căn cứ',x.evidence_summary)}${present('Giá trị dự kiến',x.value_summary)}${present('Cần lưu ý',x.risk_summary)}</div>${x.recommendation?`<div class="recommend"><b>Đề xuất:</b> ${esc(vi(x.recommendation))}</div>`:''}${link(x.source_url,x.source_title||'Xem căn cứ')}<div class="actions"><button class="btn primary" data-action="decision" data-index="${i}" data-value="DONG_Y">Đồng ý làm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="NGHIEN_CUU_THEM">Nghiên cứu thêm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="TAM_HOAN">Tạm hoãn</button><button class="btn danger" data-action="decision" data-index="${i}" data-value="KHONG_LAM">Không làm</button></div><div class="decision-note">Đồng ý đề tài chỉ cho phép đội ngũ làm tiếp; chưa đồng nghĩa bài được xuất bản.</div></article>`).join('');
+  }
+
+  function renderDecided(items){
+    const filtered = (items || []).slice().sort((a,b)=>String(b.owner_decided_at||'').localeCompare(String(a.owner_decided_at||'')));
+    $('#decided-count').textContent=filtered.length?`${filtered.length} việc`:'';
+    const el=$('#decided-list');
+    if(!filtered.length){
+      el.innerHTML='<div class="empty">Chưa có quyết định nào để theo dõi.</div>';
+      return;
+    }
+    const label=(value)=>{
+      const norm=String(value||'').trim().toUpperCase().replace(/\s+/g,'_');
+      const map={DONG_Y:'Đồng ý làm',NGHIEN_CUU_THEM:'Nghiên cứu thêm',TAM_HOAN:'Tạm hoãn',KHONG_LAM:'Không làm',SUA_LAI:'Sửa lại',KHONG_DANG:'Không đăng',LEN_LICH_DANG:'Lên lịch đăng',DANG_NGAY:'Đã chọn đăng ngay',CHUA_QUYET_DINH:'Chưa quyết định'};
+      return map[norm]||ownerText(value||'Đang chờ cập nhật');
+    };
+    el.innerHTML=filtered.map(x=>`<article class="card"><div class="tag">${x.decision_type==='PUBLISH'?'Duyệt đăng':'Nên làm / viết'}</div><div class="meta">Trạng thái: ${esc(label(x.owner_decision))}</div><h3>${esc(ownerText(x.title))}</h3><div class="meta">Nguồn: ${esc(ownerText(x.source))}</div>${x.owner_decided_at?`<div class="meta">Thời điểm quyết định: ${esc(fmtTime(x.owner_decided_at))}</div>`:''}${x.owner_note?`<div class="body">${esc(ownerText(x.owner_note))}</div>`:''}</article>`).join('');
+  }
+
+  function publishReady(x){return Boolean(x.publish_gate&&x.publish_gate.ok)}
+
+  function renderPublish(pending,scheduled,afterPublish){
+    $('#publish-count').textContent=pending.length||scheduled.length?(pending.length+' chờ duyệt · '+scheduled.length+' đã lên lịch'):'';
+    const pendingEl=$('#publish-pending-list');
+    if(!pending.length){pendingEl.innerHTML='<div class="empty">Không có bài nào đang chờ anh duyệt đăng.</div>'}
+    else{
+      pendingEl.innerHTML=pending.map((x,i)=>{
+        const ready=publishReady(x);
+        const reasons=(x.publish_gate&&x.publish_gate.reasons)||[];
+        return `<article class="card"><div class="tag ${ready?'ready':'waiting'}">Có cho xuất bản không?</div><div class="meta">${ready?'Đủ điều kiện trình duyệt':'Chưa đủ điều kiện đăng'}</div><h3>${esc(ownerText(x.title))}</h3><div class="meta">${esc(x.target_site||'Website Hà Tiên')}</div>${x.why_now?`<div class="body"><b>Vì sao bài này cần duyệt:</b> ${esc(ownerText(x.why_now))}</div>`:''}<details class="more" open><summary>Đủ lý do để duyệt</summary><div class="facts">${present('Phạm vi đang duyệt',x.approval_scope)}${present('Tiêu chuẩn bài đã áp dụng',x.standard_status)}${present('Giá trị mang lại',x.business_value||x.value_summary)}${present('Căn cứ đã kiểm',x.evidence_summary)}</div><div class="quality-grid">${quality('Từ khóa chính',x.primary_keyword)}${quality('Ý định tìm kiếm',x.search_intent)}${quality('Kêu gọi hành động',x.cta)}${quality('Kiểm tra nội bộ',x.qa_status)}${quality('Điểm SEO',x.seo_score)}${quality('URL dự kiến',x.planned_url)}</div>${x.preview_url?link(x.preview_url,'Xem bản xem trước hoàn chỉnh'):''}</details><div class="gate ${ready?'ok':'blocked'}">${ready?'Đã đủ cổng: bản xem trước + kiểm tra nội bộ + trạng thái sẵn sàng.':'Chưa được duyệt đăng: '+esc(ownerText(reasons.join('; ')||'thiếu bằng chứng hoặc bản xem trước.'))}</div><div class="publish-actions"><button class="btn primary" data-action="publish" data-index="${i}" data-value="DANG_NGAY" ${ready?'':'disabled'}>Đăng ngay</button><button class="btn gold" data-action="open-schedule" data-index="${i}" ${ready?'':'disabled'}>Lên lịch đăng</button><button class="btn soft" data-action="publish" data-index="${i}" data-value="SUA_LAI">Sửa lại</button><button class="btn danger" data-action="publish" data-index="${i}" data-value="KHONG_DANG">Không đăng</button></div><div class="decision-note">Nút duyệt chỉ ghi quyết định. Hệ thống không tự đăng WordPress và không tự ghi trạng thái LIVE.</div><div class="schedule-box" id="schedule-${i}"><div class="schedule-site"><b>Sẽ đăng trên:</b> ${esc(x.target_site||'Website Hà Tiên')}</div><div class="schedule-row"><input class="field" id="date-${i}" type="date" aria-label="Ngày đăng"><input class="field" id="time-${i}" type="time" value="09:00" aria-label="Giờ đăng"></div><textarea class="field" id="note-${i}" placeholder="Ghi chú nếu cần" aria-label="Ghi chú lịch đăng"></textarea><button class="btn gold schedule-confirm" data-action="confirm-schedule" data-index="${i}">Xác nhận lịch đăng</button></div></article>`;
+      }).join('');
+    }
+
+    $('#scheduled-heading').hidden=!scheduled.length;
+    $('#scheduled-count').textContent=scheduled.length?scheduled.length+' bài':'';
+    $('#scheduled-list').innerHTML=scheduled.map(x=>`<article class="card"><div class="tag scheduled">Đã lên lịch</div><h3>${esc(ownerText(x.title))}</h3><div class="meta">${esc(x.target_site||'Website Hà Tiên')}</div><div class="scheduled-time">${esc(fmtPublish(x.publish_at))}</div>${x.owner_note?`<div class="body">${esc(ownerText(x.owner_note))}</div>`:''}${x.preview_url?link(x.preview_url,'Xem bản xem trước'):''}<div class="status-flow"><span class="status-step current">Đã duyệt</span><span class="status-step current">Đã lên lịch</span><span class="status-step">Chờ đăng</span><span class="status-step">Chờ kiểm sau đăng</span></div></article>`).join('');
+
+    $('#after-publish-heading').hidden=!afterPublish.length;
+    $('#after-publish-count').textContent=afterPublish.length?afterPublish.length+' bài':'';
+    $('#after-publish-list').innerHTML=afterPublish.map(x=>`<article class="card"><div class="tag ${x.publication_status==='LIVE_VERIFIED'?'ready':'waiting'}">${esc(publicationLabel(x.publication_status))}</div><h3>${esc(ownerText(x.title))}</h3><div class="meta">${esc(x.target_site||'Website Hà Tiên')}</div>${x.post_url?link(x.post_url,'Mở trang đã đăng'):''}${x.post_publish_check?`<div class="body"><b>Kiểm sau đăng:</b> ${esc(ownerText(x.post_publish_check))}</div>`:''}<div class="status-flow"><span class="status-step current">Đã duyệt</span><span class="status-step current">Đã gửi đăng</span><span class="status-step ${x.publication_status==='PUBLISHED_CHECKING'||x.publication_status==='LIVE_VERIFIED'?'current':''}">Đang kiểm</span><span class="status-step ${x.publication_status==='LIVE_VERIFIED'?'current':''}">LIVE đã xác minh</span></div></article>`).join('');
+  }
+
+  function buildLegacyPublishLifecycle(model){
+    const groups={not_ready:[],ready_to_schedule:[],scheduled:[],published:[]};
+    const add=(item,preferred)=>{
+      if(!item)return;
+      const url=item.post_url||item.published_url||'';
+      const status=String(item.publication_status||item.status||'').toUpperCase();
+      if(url||['PUBLISHED','PUBLISHED_CHECKING','LIVE_VERIFIED'].includes(status)){groups.published.push(item);return}
+      if(preferred==='scheduled'||(item.owner_decision==='LEN_LICH_DANG'&&item.publish_at)){groups.scheduled.push(item);return}
+      if(preferred==='published'){groups.published.push(item);return}
+      if(item.publish_ready==='YES'||(item.publish_gate&&item.publish_gate.ok)){groups.ready_to_schedule.push(item);return}
+      groups.not_ready.push(item);
+    };
+    (model.publish||[]).forEach(x=>add(x));
+    (model.scheduled||[]).forEach(x=>add(x,'scheduled'));
+    (model.after_publish||[]).forEach(x=>add(x,'published'));
+    return groups;
+  }
+
+  function publishStatus(item){
+    const status=String(item.publication_status||item.status||'').toUpperCase();
+    if(item.post_url||item.published_url||['PUBLISHED','PUBLISHED_CHECKING','LIVE_VERIFIED'].includes(status))return 'Đã đăng';
+    if(item.owner_decision==='LEN_LICH_DANG'&&item.publish_at||item.scheduled_at||status==='SCHEDULED')return 'Đã lên lịch';
+    if(item.publish_ready==='YES'||(item.publish_gate&&item.publish_gate.ok))return 'Đủ điều kiện, chờ chọn lịch';
+    if(item.owner_decision==='SUA_LAI')return 'Cần nghiên cứu lại';
+    return 'Chưa đủ điều kiện lên lịch';
+  }
+
+  function publishReason(item){
+    if(item.publish_block_reason)return item.publish_block_reason;
+    if(item.publish_gate&&Array.isArray(item.publish_gate.reasons))return item.publish_gate.reasons.join('; ');
+    return '';
+  }
+
+  function publishMatches(item){
+    const fields=[item.title,item.status,item.publish_block_reason,item.owner_decision,item.publication_status,item.target_site,item.post_url,publishStatus(item),publishReason(item)];
+    return fields.join(' ').toLowerCase().includes(state.publishView.query.trim().toLowerCase());
+  }
+
+  function publishCard(item,index,group){
+    const title=item.title||item.topic_title||item.name||'Chưa có tiêu đề';
+    const url=item.post_url||item.published_url||'';
+    const date=item.publish_at||item.scheduled_at||'';
+    const detailId='publish-detail-'+index;
+    let html='<article class="card publish-card"><h3>'+esc(title)+'</h3><p class="muted">Trạng thái: '+esc(publishStatus(item))+'</p><button class="btn secondary" data-action="publish-detail" data-index="'+index+'">'+(state.publishView.details[index]?'Thu gọn':'Xem chi tiết')+'</button><div class="publish-detail" id="'+detailId+'" '+(state.publishView.details[index]?'':'hidden')+'>';
+    const reason=publishReason(item);
+    if(reason)html+='<p class="muted">Lý do chưa lên lịch: '+esc(reason)+'</p>';
+    if(date)html+='<p class="muted">Ngày giờ lên lịch: '+esc(date)+'</p>';
+    if(url)html+='<p class="muted">Link đã đăng: '+esc(url)+'</p>';
+    html+='</div><div class="actions">';
+    if(group==='not_ready')html+='<button class="btn secondary" data-action="publish" data-index="'+index+'" data-value="SUA_LAI">Nghiên cứu lại</button>';
+    if(group==='ready_to_schedule')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Lên lịch đăng</button>';
+    if(group==='scheduled')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Sửa lịch đăng</button>';
+    if(group==='published'&&isRealUrl(url))html+='<button class="btn secondary" data-action="open-post" data-index="'+index+'">Xem bài đã đăng</button>';
+    html+='</div>';
+    if(group==='ready_to_schedule'||group==='scheduled')html+='<div class="schedule-box" id="publish-schedule-'+index+'"><label>Ngày <input id="publish-date-'+index+'" type="date"></label><label>Giờ <input id="publish-time-'+index+'" type="time"></label><label>Ghi chú <input id="publish-note-'+index+'" type="text"></label><button class="btn primary" data-action="confirm-schedule" data-index="'+index+'">Lưu lịch đăng</button></div>';
+    return html+'</article>';
+  }
+
+  function renderPublish(lifecycle){
+    state.publishLifecycle=lifecycle||{not_ready:[],ready_to_schedule:[],scheduled:[],published:[]};
+    const sections=[['not_ready','publish-not-ready-heading','publish-not-ready-list','publish-not-ready-count'],['ready_to_schedule','publish-ready-heading','publish-ready-list','publish-ready-count'],['scheduled','publish-scheduled-heading','publish-scheduled-list','publish-scheduled-count'],['published','publish-published-heading','publish-published-list','publish-published-count']];
+    state.publishItems=[];
+    sections.forEach(([group,heading,list,count])=>{
+      const all=Array.isArray(state.publishLifecycle[group])?state.publishLifecycle[group]:[];
+      const filtered=all.filter(publishMatches).filter(item=>{
+        if(state.publishView.filter==='has_link')return Boolean(item.post_url||item.published_url);
+        if(state.publishView.filter==='no_link')return !Boolean(item.post_url||item.published_url);
+        if(state.publishView.filter==='needs_research')return item.owner_decision==='SUA_LAI'||group==='not_ready';
+        return state.publishView.filter==='all'||state.publishView.filter===group;
+      });
+      const shown=filtered.slice(0,state.publishView.limits[group]);
+      const el=$('#'+list),head=$('#'+heading),toggle=head&&head.querySelector('.publish-group-toggle');
+      if(head)head.hidden=!filtered.length;
+      if(count)$('#'+count).textContent=filtered.length+' bài';
+      if(toggle)toggle.setAttribute('aria-expanded',String(state.publishView.open[group]!==false));
+      if(el){el.hidden=state.publishView.open[group]===false;el.innerHTML=shown.map(item=>{const index=state.publishItems.length;state.publishItems.push(item);return publishCard(item,index,group)}).join('');if(filtered.length>shown.length)el.innerHTML+='<button class="btn secondary publish-more" data-action="publish-more" data-group="'+group+'">Xem thêm ('+(filtered.length-shown.length)+')</button>'}
+    });
+    $('#publish-count').textContent=sections.reduce((n,[group])=>n+(state.publishLifecycle[group]||[]).filter(publishMatches).length,0)+' bài';
+  }
+
+  function publicationLabel(status){
+    return ({APPROVED_TO_PUBLISH:'Đã duyệt, chờ người đăng',SCHEDULED:'Đã lên lịch',PUBLISHED_CHECKING:'Đã đăng, đang kiểm tra',LIVE_VERIFIED:'LIVE đã xác minh',REVISION_REQUESTED:'Yêu cầu sửa lại',REJECTED:'Không đăng'})[status]||'Đang xử lý';
+  }
+
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-action]');
+    if(!b)return;
+    const i=Number(b.dataset.index||0);
+    const action=b.dataset.action;
+    if(action==='decision'){const item=(state.model.decisions||[])[i];if(item)decide(item,b.dataset.value)}
+    if(action==='publish'){const item=(state.publishItems||[])[i];if(item)decide(item,b.dataset.value)}
+    if(action==='open-post'){const item=(state.publishItems||[])[i],url=item&&(item.post_url||item.published_url||'');if(isRealUrl(url))window.open(url,'_blank','noopener')}
+    if(action==='open-schedule'){const box=$('#publish-schedule-'+i);if(box){box.classList.toggle('open');setScheduleMin(i)}}
+    if(action==='confirm-schedule')schedule(i);
+    if(action==='publish-filter'){state.publishView.filter=b.dataset.filter||'all';$$('.filter-chip').forEach(x=>x.classList.toggle('active',x===b));renderPublish(state.publishLifecycle)}
+    if(action==='publish-toggle'){const group=b.dataset.group;state.publishView.open[group]=state.publishView.open[group]===false;renderPublish(state.publishLifecycle)}
+    if(action==='publish-more'){const group=b.dataset.group;state.publishView.limits[group]=(state.publishView.limits[group]||5)+5;renderPublish(state.publishLifecycle)}
+    if(action==='publish-detail'){state.publishView.details[i]=!state.publishView.details[i];renderPublish(state.publishLifecycle)}
+  });
+
+  $('#publish-search')?.addEventListener('input',e=>{state.publishView.query=e.target.value||'';renderPublish(state.publishLifecycle)});
+
+  $('#view-all-pending')?.addEventListener('click',()=>switchScreen('decisions'));
+
+  function localDateParts(date){const y=date.getFullYear();const m=String(date.getMonth()+1).padStart(2,'0');const d=String(date.getDate()).padStart(2,'0');const hh=String(date.getHours()).padStart(2,'0');const mm=String(date.getMinutes()).padStart(2,'0');return{date:`${y}-${m}-${d}`,time:`${hh}:${mm}`}}
+  function setScheduleMin(i){
+    const dateField=$('#publish-date-'+i),timeField=$('#publish-time-'+i);if(!dateField||!timeField)return;
+    const parts=localDateParts(new Date());dateField.min=parts.date;if(!dateField.value)dateField.value=parts.date;timeField.min=dateField.value===parts.date?parts.time:'';
+    dateField.onchange=()=>{const fresh=localDateParts(new Date());timeField.min=dateField.value===fresh.date?fresh.time:'';if(timeField.min&&timeField.value<timeField.min)timeField.value=timeField.min};
+    if(timeField.min&&timeField.value<timeField.min)timeField.value=timeField.min;
+  }
+  function schedule(i){
+    const item=(state.publishItems||[])[i];if(!item)return;
+    const d=$('#publish-date-'+i).value,t=$('#publish-time-'+i).value;if(!d||!t){toast('Vui lòng chọn ngày và giờ đăng.');return}
+    const publishDate=new Date(d+'T'+t);if(isNaN(publishDate.getTime())){toast('Ngày giờ đăng chưa hợp lệ.');return}
+    if(publishDate.getTime()<Date.now()-60000){toast('Không thể lên lịch ở thời điểm đã qua.');return}
+    decide(item,'LEN_LICH_DANG',d+'T'+t,$('#publish-note-'+i).value);
+  }
+
+  function decide(item,value,publishAt,note){
+    if(state.busy)return;
+    if(state.demo){demoApply(item,value,publishAt,note);toast('Chế độ xem thử: đã mô phỏng, không ghi dữ liệu thật.');return}
+    state.busy=true;$$('.btn').forEach(b=>b.disabled=true);
+    const payload={source:item.source,row_number:item.row_number,record_id:item.record_id||'',decision_type:item.decision_type,decision_value:value,publish_at:publishAt||'',note:note||''};
+    if(window.google&&google.script&&google.script.run){
+      google.script.run.withSuccessHandler(res=>{state.busy=false;toast((res&&res.message)||'Đã lưu quyết định.');load()}).withFailureHandler(err=>{state.busy=false;$$('.btn').forEach(b=>b.disabled=false);toast(ownerText((err&&err.message)||'Không lưu được. Vui lòng thử lại.'))}).saveMarketOwnerDecision(payload);
+    }else{state.busy=false;toast('Không có kết nối backend. Dữ liệu chưa được lưu.');$$('.btn').forEach(b=>b.disabled=false)}
+  }
+
+  function demoApply(item,value,publishAt,note){
+    if(!state.model)return;
+    if(item.decision_type==='PUBLISH'){
+      state.model.publish=state.model.publish.filter(x=>x!==item);
+      if(value==='LEN_LICH_DANG')state.model.scheduled=[...(state.model.scheduled||[]),{...item,publish_at:publishAt,owner_note:note||'',publication_status:'SCHEDULED'}];
+      if(value==='DANG_NGAY')state.model.after_publish=[...(state.model.after_publish||[]),{...item,publication_status:'APPROVED_TO_PUBLISH',post_publish_check:'Chờ người phụ trách đăng và kiểm tra.'}];
+    }else state.model.decisions=state.model.decisions.filter(x=>x!==item);
+    state.model.overview.needs_decision=state.model.decisions.length;state.model.overview.waiting_publish=state.model.publish.length;state.model.overview.scheduled_publish=(state.model.scheduled||[]).length;render(state.model);
+  }
+
+  function toast(msg){const t=$('#toast');t.textContent=ownerText(msg);t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2800)}
+  function showLoadError(err){$('#overview-loading').innerHTML=`<div class="error">${esc(ownerText((err&&err.message)||'Không tải được dữ liệu. Vui lòng thử lại.'))}</div>`}
+  function load(){
+    if(state.demo){render(demoModel());return}
+    if(window.google&&google.script&&google.script.run)google.script.run.withSuccessHandler(render).withFailureHandler(showLoadError).getMarketDashboardModel();
+    else showLoadError({message:'Không có kết nối Google Apps Script. Mở ?demo=1 để xem thử an toàn.'});
+  }
+
+  function demoModel(){
+    const now=new Date().toISOString();
+    const tomorrow=new Date(Date.now()+86400000);
+    tomorrow.setHours(9,0,0,0);
+    return {
+      ok:true,
+      generated_at:now,
+      greeting:'Chào buổi sáng, anh Hải',
+      overview:{needs_decision:2,waiting_publish:1,scheduled_publish:1,recent_signals:3,summary:'Có 3 việc cần anh Hải xem.'},
+      signals:[
+        {title:'Đối thủ fryer đang đẩy mạnh lọc dầu',detail:'Tín hiệu phù hợp để so sánh cho R&D fryer.',recommendation:'Nghiên cứu thêm',source_title:'Nguồn hãng',source_url:'https'+':'+'/'+'/'+'example.com'},
+        {title:'Nhu cầu tìm kiếm bếp trường học có tín hiệu tăng',detail:'Có thể tạo cơ hội nội dung nếu dữ liệu xác nhận.',recommendation:'Đối chiếu dữ liệu trước khi tạo bài.'},
+        {title:'Chính sách bếp ăn tập thể cần tiếp tục theo dõi',detail:'Chỉ tạo việc khi có thay đổi mới ảnh hưởng trực tiếp.',recommendation:'Theo dõi thêm'}
+      ],
+      decisions:[
+        {source:'G1_RESULTS',row_number:2,record_id:'demo-1',decision_type:'SHOULD_DO',title:'Có nên làm bài về rà soát bếp ăn trường học?',why_now:'Tín hiệu chính sách và nhu cầu tìm kiếm cùng hướng.',evidence_summary:'Nguồn chính thức và dữ liệu nội bộ cần đối chiếu.',value_summary:'Có thể tạo nội dung có nhu cầu thật.',risk_summary:'Không diễn giải pháp lý thành chứng nhận.',recommendation:'Nên viết nếu dữ liệu xác nhận.',source_title:'Nguồn chính thức',source_url:'https'+':'+'/'+'/'+'example.com'},
+        {source:'G1_RESULTS',row_number:3,record_id:'demo-2',decision_type:'SHOULD_DO',title:'Có mở benchmark fryer thế hệ mới?',why_now:'Ba đối thủ cùng chuyển sang quản lý dầu và tự động hóa.',evidence_summary:'Nguồn chính thức từ ba hãng đối thủ.',value_summary:'Giúp R&D tìm điểm khác biệt đáng thử nghiệm.',risk_summary:'Chưa đủ căn cứ mở dự án sản phẩm mới.',recommendation:'Đồng ý benchmark, chưa mở dự án mới.'}
+      ],
+      publish:[
+        {source:'CONTENT',row_number:1,record_id:'demo-2a',decision_type:'PUBLISH',title:'Bài kế hoạch cần bổ sung căn cứ trước khi đăng',target_site:'hatiencorp.vn',publish_ready:'NO',publish_block_reason:'Chưa đủ căn cứ và bản xem trước hoàn chỉnh.'},
+        {source:'CONTENT',row_number:2,record_id:'demo-3',decision_type:'PUBLISH',title:'Checklist rà soát bếp ăn trường học trước năm học mới',target_site:'hatiencorp.vn',why_now:'Bản hoàn chỉnh đã qua kiểm tra.',approval_scope:'Duyệt bài, ảnh, CTA và lịch đăng',standard_status:'Đã áp dụng tiêu chuẩn bài website.',business_value:'Hỗ trợ SEO và tư vấn audit.',evidence_summary:'Nguồn chính thức đã kiểm.',primary_keyword:'rà soát bếp ăn trường học',search_intent:'Tìm checklist trước đợt kiểm tra',cta:'Đăng ký rà soát bếp trường học',qa_status:'PASS',seo_score:'86/100',planned_url:'https'+':'+'/'+'/'+'hatiencorp.vn/checklist',publish_ready:'YES',preview_url:'https'+':'+'/'+'/'+'example.com',publish_gate:{ok:true,reasons:[]}}
+      ],
+      scheduled:[
+        {source:'CONTENT',row_number:4,record_id:'demo-4',title:'Cách tính công suất bếp ăn công ty',target_site:'hatiencorp.vn',publish_at:tomorrow.toISOString(),owner_note:'Đăng buổi sáng.',preview_url:'https'+':'+'/'+'/'+'example.com',publication_status:'SCHEDULED'}
+      ],
+      after_publish:[
+        {source:'CONTENT',row_number:5,record_id:'demo-5',title:'Bếp một chiều là gì?',target_site:'hatiencorp.vn',publication_status:'PUBLISHED_CHECKING',post_url:'https'+':'+'/'+'/'+'example.com',post_publish_check:'Đang kiểm mobile và CTA.'}
+      ],
+      decided:[
+        {source:'G1_RESULTS',row_number:6,record_id:'demo-6',decision_type:'SHOULD_DO',owner_decision:'DONG_Y',owner_decided_at:new Date(Date.now()-2*60*60*1000).toISOString(),title:'Đã duyệt đề tài khảo sát khách hàng ngành F&B',owner_note:'Nên làm ngay để có dữ liệu tuần này.'},
+        {source:'CONTENT',row_number:7,record_id:'demo-7',decision_type:'PUBLISH',owner_decision:'LEN_LICH_DANG',owner_decided_at:new Date(Date.now()-40*60*1000).toISOString(),title:'Rà soát checklist an toàn bếp mới',owner_note:'Lên lịch trưa mai.'}
+      ]
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded',load);
+</script>
+</body>
+</html>

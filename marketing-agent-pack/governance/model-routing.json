@@ -1,0 +1,170 @@
+{
+  "schema_version": "1.0.0",
+  "policy_id": "HTM-MODEL-ROUTING-20260828-001",
+  "status": "OWNER_APPROVED",
+  "updated_at_vn": "2026-08-28T18:37:00+07:00",
+  "source_instruction": "Anh Hải yêu cầu gán model cho từng nhóm agent trong dự án Market & PR-MKT Command Center.",
+  "important_note": "Các giá trị model dưới đây là nhãn vận hành nội bộ theo yêu cầu owner; không tự diễn giải thành tên model API public nếu hệ runner chưa khai báo alias tương ứng.",
+  "model_tiers": {
+    "GPT_5_6_SOL_EXTRA_HIGH": {
+      "owner_label": "GPT 5.6 Sol Extra hight",
+      "normalized_label": "GPT 5.6 Sol Extra High",
+      "purpose": "Agent chiến lược, quyết định, định hướng, kiểm rủi ro cao và gói quyết định cho owner.",
+      "allowed_for": ["BA", "PO", "PM", "CMO", "G0", "G7", "Product R&D Liaison"]
+    },
+    "GPT_5_5_EXTRA_HIGH": {
+      "owner_label": "GPT 5.5 extra hight",
+      "normalized_label": "GPT 5.5 Extra High",
+      "purpose": "Agent thuộc team Marketing cần suy luận sâu: nghiên cứu thị trường, insight, chiến lược kênh, performance, content planning và phân tích cơ hội.",
+      "allowed_for": ["MKT Strategist", "Content Producer", "Channel Operator", "Performance Analyst", "Product Marketing Context", "Marketing Research"]
+    },
+    "GPT_5_5_MEDIUM": {
+      "owner_label": "GPT 5.5 medium",
+      "normalized_label": "GPT 5.5 Medium",
+      "purpose": "Agent thực thi có phạm vi rõ: code, tạo nội dung, thiết kế, kiểm thử lặp lại và sản xuất asset theo brief.",
+      "allowed_for": ["DEV", "Content Creator", "Designer", "Tester", "QA runner"]
+    }
+  },
+  "resolution_priority": [
+    "agent_overrides",
+    "role_defaults",
+    "team_defaults",
+    "fallback_policy"
+  ],
+  "role_defaults": {
+    "ba": "GPT_5_6_SOL_EXTRA_HIGH",
+    "business_analyst": "GPT_5_6_SOL_EXTRA_HIGH",
+    "po": "GPT_5_6_SOL_EXTRA_HIGH",
+    "product_owner": "GPT_5_6_SOL_EXTRA_HIGH",
+    "pm": "GPT_5_6_SOL_EXTRA_HIGH",
+    "project_manager": "GPT_5_6_SOL_EXTRA_HIGH",
+    "product_manager": "GPT_5_6_SOL_EXTRA_HIGH",
+    "cmo": "GPT_5_6_SOL_EXTRA_HIGH",
+    "dev": "GPT_5_5_MEDIUM",
+    "developer": "GPT_5_5_MEDIUM",
+    "software_engineer": "GPT_5_5_MEDIUM",
+    "coding_agent": "GPT_5_5_MEDIUM",
+    "content_creator": "GPT_5_5_MEDIUM",
+    "content_creater": "GPT_5_5_MEDIUM",
+    "designer": "GPT_5_5_MEDIUM",
+    "tester": "GPT_5_5_MEDIUM",
+    "qa_runner": "GPT_5_5_MEDIUM"
+  },
+  "team_defaults": {
+    "marketing": "GPT_5_5_EXTRA_HIGH",
+    "mkt": "GPT_5_5_EXTRA_HIGH",
+    "growth": "GPT_5_5_EXTRA_HIGH",
+    "performance": "GPT_5_5_EXTRA_HIGH",
+    "content_strategy": "GPT_5_5_EXTRA_HIGH"
+  },
+  "agent_overrides": {
+    "g0-case-controller": {
+      "display_name": "G0 Case Controller",
+      "role_group": "BA/PM điều phối case",
+      "model_tier": "GPT_5_6_SOL_EXTRA_HIGH",
+      "reason": "Điều phối case, chọn agent/skill và chỉ trình Decision Pack khi có quyết định thật sự cần owner."
+    },
+    "g7-proof-qa": {
+      "display_name": "G7 Proof & QA",
+      "role_group": "CMO/QA kiểm rủi ro public",
+      "model_tier": "GPT_5_6_SOL_EXTRA_HIGH",
+      "reason": "Chặn claim, model, thông số, luật, media, canonical và tracking chưa đủ bằng chứng."
+    },
+    "product-rd-liaison": {
+      "display_name": "Product R&D Liaison",
+      "role_group": "BA/PM sản phẩm",
+      "model_tier": "GPT_5_6_SOL_EXTRA_HIGH",
+      "reason": "Chuyển tín hiệu thị trường thành cơ hội R&D nhưng không tự tạo Product/SKU/Opportunity/Quote."
+    },
+    "product-owner-agent": {
+      "display_name": "Product Owner Agent",
+      "role_group": "PO",
+      "model_tier": "GPT_5_6_SOL_EXTRA_HIGH",
+      "reason": "Báo trạng thái dự án, production, test và quyết định owner theo đúng bằng chứng."
+    },
+    "cmo-agent": {
+      "display_name": "CMO Agent",
+      "role_group": "CMO",
+      "model_tier": "GPT_5_6_SOL_EXTRA_HIGH",
+      "reason": "Quyết định định vị, brand, chiến lược marketing và cổng public cấp cao."
+    },
+    "ba-agent": {
+      "display_name": "BA Agent",
+      "role_group": "BA",
+      "model_tier": "GPT_5_6_SOL_EXTRA_HIGH",
+      "reason": "Phân tích yêu cầu, quy trình, dữ liệu, boundary và tiêu chí nghiệm thu."
+    },
+    "pm-agent": {
+      "display_name": "PM Agent",
+      "role_group": "PM",
+      "model_tier": "GPT_5_6_SOL_EXTRA_HIGH",
+      "reason": "Quản trị scope, deadline, blocker, milestone và phối hợp đội."
+    },
+    "mkt-strategist": {
+      "display_name": "MKT Strategist",
+      "role_group": "Marketing team",
+      "model_tier": "GPT_5_5_EXTRA_HIGH",
+      "reason": "Chiến lược, đối thủ, insight, KPI, brief chiến dịch."
+    },
+    "content-producer": {
+      "display_name": "Content Producer",
+      "role_group": "Marketing team",
+      "model_tier": "GPT_5_5_EXTRA_HIGH",
+      "reason": "Lập lịch, brief, cấu trúc nội dung và phối hợp creative; khác với Content Creator thực thi."
+    },
+    "channel-operator": {
+      "display_name": "Channel Operator",
+      "role_group": "Marketing team",
+      "model_tier": "GPT_5_5_EXTRA_HIGH",
+      "reason": "Thiết lập kênh, landing page, email, social listening và referral."
+    },
+    "performance-analyst": {
+      "display_name": "Performance Analyst",
+      "role_group": "Marketing team",
+      "model_tier": "GPT_5_5_EXTRA_HIGH",
+      "reason": "Phân tích dữ liệu, audit hiệu suất, KPI ngược, báo cáo và A/B test."
+    },
+    "product-marketing-context": {
+      "display_name": "Product Marketing Context",
+      "role_group": "Marketing team",
+      "model_tier": "GPT_5_5_EXTRA_HIGH",
+      "reason": "Giữ bối cảnh sản phẩm, khách hàng, định vị, proof points và North Star Metric."
+    },
+    "dev-agent": {
+      "display_name": "DEV Agent",
+      "role_group": "DEV",
+      "model_tier": "GPT_5_5_MEDIUM",
+      "reason": "Thực thi code theo task, test và guardrail đã được BA/PO/PM khóa."
+    },
+    "content-creator": {
+      "display_name": "Content Creator",
+      "role_group": "Content Creator",
+      "model_tier": "GPT_5_5_MEDIUM",
+      "reason": "Sản xuất nội dung theo brief/standard đã duyệt; không tự duyệt claim hoặc publish."
+    },
+    "designer": {
+      "display_name": "Designer",
+      "role_group": "Designer",
+      "model_tier": "GPT_5_5_MEDIUM",
+      "reason": "Thiết kế theo brief, design system và tiêu chí mobile; không tự đổi chiến lược."
+    },
+    "tester-agent": {
+      "display_name": "Tester Agent",
+      "role_group": "Tester/QA runner",
+      "model_tier": "GPT_5_5_MEDIUM",
+      "reason": "Kiểm thử độc lập theo contract và bằng chứng runtime; không sửa kết quả để làm đẹp báo cáo."
+    }
+  },
+  "conflict_rules": [
+    "Nếu agent có exact override thì dùng override, không dùng team default.",
+    "Nếu một agent vừa thuộc Marketing vừa là vai trò chiến lược owner-level, dùng GPT_5_6_SOL_EXTRA_HIGH.",
+    "Nếu một agent chỉ thực thi asset/code theo brief, dùng GPT_5_5_MEDIUM dù nằm trong hệ marketing.",
+    "Không tự nâng/hạ model theo cảm tính; thay đổi phải sửa file này và chạy model-routing contract."
+  ],
+  "fallback_policy": {
+    "marketing_team_unknown": "GPT_5_5_EXTRA_HIGH",
+    "execution_unknown": "GPT_5_5_MEDIUM",
+    "strategy_or_approval_unknown": "GPT_5_6_SOL_EXTRA_HIGH",
+    "otherwise": "REQUIRES_OWNER_CONFIRMATION"
+  }
+}
