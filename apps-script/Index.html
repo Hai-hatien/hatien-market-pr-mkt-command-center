@@ -259,7 +259,7 @@
   }
 
   function renderDecided(items){
-    const filtered = (items || []).slice().sort((a,b)=>String(b.owner_decided_at||'').localeCompare(String(a.owner_decided_at||''));
+    const filtered = (items || []).slice().sort((a,b)=>String(b.owner_decided_at||'').localeCompare(String(a.owner_decided_at||'')));
     $('#decided-count').textContent=filtered.length?`${filtered.length} việc`:'';
     const el=$('#decided-list');
     if(!filtered.length){

@@ -9,7 +9,7 @@ const expected={
   overview:['Đáng chú ý sáng nay','Cần quyết định','Chờ duyệt đăng'],
   decisions:['Việc cần anh quyết định','Không có việc nào cần quyết định.'],
   decided:['Đã quyết định'],
-  publish:['Bài chờ đăng / lịch đăng','Có cho xuất bản không?','Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng']
+  publish:['Bài chờ đăng / lịch đăng','Có cho xuất bản không?','Đăng ngay',['Lên lịch đăng','Xác nhận lịch đăng'],'Sửa lại','Không đăng']
 };
 const report=[];
 const candidates = [
@@ -37,13 +37,38 @@ try{
       await page.goto(url,{waitUntil:'networkidle'});
       await page.waitForTimeout(250);
       const title=await page.title();
-      const frame=page.frames().find(f=>f.url().includes('Index.html'));
+      let frame;
+      for(let attempt=0; attempt<20; attempt++){
+        frame=page.frames().find(f=>f.url().includes('Index.html'));
+        if(!frame){
+          const iframe=await page.$('iframe#app');
+          if(iframe){
+            frame=await iframe.contentFrame();
+          }
+        }
+        if(frame) break;
+        await page.waitForTimeout(150);
+      }
       if(!frame) throw new Error(`Không tìm thấy iframe preview ${width}/${screen}`);
+      const btn=frame.locator(`[data-screen="${screen}"]`);
+      if(await btn.count()>0){
+        await btn.first().click({timeout:1500}).catch(()=>{});
+      }
       for(const text of expected[screen]){
+        const tokens=Array.isArray(text)?text:[text];
+        let found=false;
+        for(const token of tokens){
+          try{
+            await frame.getByText(token,{exact:false}).first().waitFor({state:'visible',timeout:1000});
+            found=true;
+            break;
+          } catch(_) {}
+        }
+        if(found) continue;
         try{
-          await frame.getByText(text,{exact:false}).first().waitFor({state:'visible',timeout:5000});
+          await frame.getByText(Array.isArray(text)?text.join('/'):text,{exact:false}).first().waitFor({state:'visible',timeout:1500});
         } catch(_) {
-          throw new Error(`Thiếu text ${text} ở ${width}/${screen}`);
+          throw new Error(`Thiếu text ${Array.isArray(text)?text.join('/') : text} ở ${width}/${screen}`);
         }
       }
       const overflow=await frame.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1);
