@@ -13,6 +13,8 @@ try{
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto(url,{waitUntil:'networkidle'});
   await page.waitForTimeout(1800);
+  fs.mkdirSync('artifacts/runtime-smoke',{recursive:true});
+  await page.screenshot({path:'artifacts/runtime-smoke/web-app.png',fullPage:true});
   const body=await page.locator('body').innerText();
   if(/Đăng nhập|Email hoặc số điện thoại|Email or phone|accounts\.google\.com/i.test(body)||/accounts\.google\.com/i.test(page.url()))throw new Error('Web App yêu cầu đăng nhập Google, chưa thể xác nhận runtime bằng URL công khai.');
   if(errors.some(error=>/SyntaxError|unescaped line break/i.test(error)))throw new Error('Runtime có SyntaxError: '+errors.join(' | '));

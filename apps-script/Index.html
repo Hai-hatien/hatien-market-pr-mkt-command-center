@@ -428,25 +428,38 @@
   }
 
   function demoModel(){
-    const now=new Date().toISOString();const tomorrow=new Date(Date.now()+86400000);tomorrow.setHours(9,0,0,0);
-    return{ok:true,generated_at:now,greeting:'Chào buổi sáng, anh Hải',overview:{needs_decision:2,waiting_publish:1,scheduled_publish:1,recent_signals:3,summary:'Có 3 việc cần anh Hải xem.'},signals:[
-      {title:'Đối thủ fryer đang đẩy mạnh lọc dầu và trải nghiệm vận hành',detail:'Tín hiệu phù hợp để so sánh cho R&D fryer trước khi chốt ý tưởng.',recommendation:'Nghiên cứu thêm',source_title:'Nguồn hãng',source_url:'https://example.com'},
-      {title:'Nhu cầu tìm kiếm bếp trường học có tín hiệu tăng',detail:'Có thể tạo cơ hội nội dung nếu Search Console xác nhận truy vấn liên quan.',recommendation:'Đối chiếu Search Console trước khi tạo bài.'},
-      {title:'Chính sách bếp ăn tập thể cần tiếp tục theo dõi',detail:'Chỉ tạo việc khi có thay đổi mới ảnh hưởng trực tiếp thiết kế hoặc vận hành.',recommendation:'Theo dõi thêm'}
-    ],decisions:[
-      {source:'G1_RESULTS',row_number:2,record_id:'demo-1',decision_type:'SHOULD_DO',title:'Có nên làm bài về rà soát bếp ăn trường học?',why_now:'Tín hiệu chính sách và nhu cầu tìm kiếm cùng hướng về nhóm trường học.',evidence_summary:'Nguồn Chính phủ và dữ liệu tìm kiếm nội bộ cần được đối chiếu.',value_summary:'Có thể tạo nội dung có nhu cầu thật, hỗ trợ SEO và tư vấn dự án trường học.',risk_summary:'Không được diễn giải nội dung pháp lý thành chứng nhận hoặc cam kết đạt chuẩn.',recommendation:'Nên viết nếu Search Console xác nhận có lượt hiển thị hoặc truy vấn phù hợp.',source_title:'Nguồn chính thức',source_url:'https://example.com'},
-      {source:'G1_RESULTS',row_number:3,record_id:'demo-2',decision_type:'SHOULD_DO',title:'Có mở benchmark fryer thế hệ mới?',why_now:'Ba đối thủ cùng chuyển sang quản lý dầu, tự động hóa và giao diện vận hành.',evidence_summary:'Nguồn chính thức từ ba hãng đối thủ.',value_summary:'Giúp R&D tìm 3–5 điểm khác biệt đáng thử nghiệm thay vì chỉ so dung tích và công suất.',risk_summary:'Chưa đủ căn cứ để mở dự án sản phẩm mới trước khi hoàn thành so sánh kỹ thuật.',recommendation:'Đồng ý benchmark, chưa cần mở dự án sản phẩm mới.'}
-    ],publish:[
-      {source:'CONTENT',row_number:1,record_id:'demo-2a',decision_type:'PUBLISH',title:'Bài kế hoạch cần bổ sung căn cứ trước khi đăng',target_site:'hatiencorp.vn',publish_ready:'NO',publish_block_reason:'Chưa đủ căn cứ và bản xem trước hoàn chỉnh.'},
-      {source:'CONTENT',row_number:2,record_id:'demo-3',decision_type:'PUBLISH',title:'Checklist rà soát bếp ăn trường học trước năm học mới',target_site:'hatiencorp.vn',why_now:'Bản hoàn chỉnh đã qua kiểm tra và đang chờ quyết định xuất bản.',approval_scope:'Duyệt toàn bộ bài, ảnh, CTA và lịch đăng',standard_status:'Đã áp dụng Tiêu chuẩn bài website Hà Tiên v2.1',business_value:'Tăng uy tín chuyên môn, hỗ trợ SEO nhóm trường học và tạo đầu vào tư vấn audit.',evidence_summary:'Nguồn chính thức + checklist kỹ thuật nội bộ đã kiểm.',primary_keyword:'rà soát bếp ăn trường học',search_intent:'Tìm hướng dẫn/checklist trước đợt kiểm tra',cta:'Đăng ký rà soát bếp trường học',qa_status:'PASS',seo_score:'86/100',planned_url:'https://hatiencorp.vn/checklist-ra-soat-bep-an-truong-hoc',publish_ready:'YES',preview_url:'https://example.com',publish_gate:{ok:true,reasons:[]}}
-    ],scheduled:[
-      {source:'CONTENT',row_number:4,record_id:'demo-4',title:'Cách tính công suất bếp ăn công ty theo số suất và giờ phục vụ',target_site:'hatiencorp.vn',publish_at:tomorrow.toISOString(),owner_note:'Đăng buổi sáng.',preview_url:'https://example.com',publication_status:'SCHEDULED'}
-    ],after_publish:[
-      {source:'CONTENT',row_number:5,record_id:'demo-5',title:'Bếp một chiều là gì?',target_site:'hatiencorp.vn',publication_status:'PUBLISHED_CHECKING',post_url:'https://example.com',post_publish_check:'Đang kiểm mobile, CTA, canonical và tracking.'}
-    ],decided:[
-      {source:'G1_RESULTS',row_number:6,record_id:'demo-6',decision_type:'SHOULD_DO',owner_decision:'DONG_Y',owner_decided_at:new Date(Date.now()-2*60*60*1000).toISOString(),title:'Đã duyệt đề tài khảo sát khách hàng ngành F&B',owner_note:'Nên làm ngay để có dữ liệu tuần này.'},
-      {source:'CONTENT',row_number:7,record_id:'demo-7',decision_type:'PUBLISH',owner_decision:'LEN_LICH_DANG',owner_decided_at:new Date(Date.now()-40*60*1000).toISOString(),title:'Rà soát checklist an toàn bếp mới',owner_note:'Lên lịch trưa mai.'}
-    ]};
+    const now=new Date().toISOString();
+    const tomorrow=new Date(Date.now()+86400000);
+    tomorrow.setHours(9,0,0,0);
+    return {
+      ok:true,
+      generated_at:now,
+      greeting:'Chào buổi sáng, anh Hải',
+      overview:{needs_decision:2,waiting_publish:1,scheduled_publish:1,recent_signals:3,summary:'Có 3 việc cần anh Hải xem.'},
+      signals:[
+        {title:'Đối thủ fryer đang đẩy mạnh lọc dầu',detail:'Tín hiệu phù hợp để so sánh cho R&D fryer.',recommendation:'Nghiên cứu thêm',source_title:'Nguồn hãng',source_url:'https://example.com'},
+        {title:'Nhu cầu tìm kiếm bếp trường học có tín hiệu tăng',detail:'Có thể tạo cơ hội nội dung nếu dữ liệu xác nhận.',recommendation:'Đối chiếu dữ liệu trước khi tạo bài.'},
+        {title:'Chính sách bếp ăn tập thể cần tiếp tục theo dõi',detail:'Chỉ tạo việc khi có thay đổi mới ảnh hưởng trực tiếp.',recommendation:'Theo dõi thêm'}
+      ],
+      decisions:[
+        {source:'G1_RESULTS',row_number:2,record_id:'demo-1',decision_type:'SHOULD_DO',title:'Có nên làm bài về rà soát bếp ăn trường học?',why_now:'Tín hiệu chính sách và nhu cầu tìm kiếm cùng hướng.',evidence_summary:'Nguồn chính thức và dữ liệu nội bộ cần đối chiếu.',value_summary:'Có thể tạo nội dung có nhu cầu thật.',risk_summary:'Không diễn giải pháp lý thành chứng nhận.',recommendation:'Nên viết nếu dữ liệu xác nhận.',source_title:'Nguồn chính thức',source_url:'https://example.com'},
+        {source:'G1_RESULTS',row_number:3,record_id:'demo-2',decision_type:'SHOULD_DO',title:'Có mở benchmark fryer thế hệ mới?',why_now:'Ba đối thủ cùng chuyển sang quản lý dầu và tự động hóa.',evidence_summary:'Nguồn chính thức từ ba hãng đối thủ.',value_summary:'Giúp R&D tìm điểm khác biệt đáng thử nghiệm.',risk_summary:'Chưa đủ căn cứ mở dự án sản phẩm mới.',recommendation:'Đồng ý benchmark, chưa mở dự án mới.'}
+      ],
+      publish:[
+        {source:'CONTENT',row_number:1,record_id:'demo-2a',decision_type:'PUBLISH',title:'Bài kế hoạch cần bổ sung căn cứ trước khi đăng',target_site:'hatiencorp.vn',publish_ready:'NO',publish_block_reason:'Chưa đủ căn cứ và bản xem trước hoàn chỉnh.'},
+        {source:'CONTENT',row_number:2,record_id:'demo-3',decision_type:'PUBLISH',title:'Checklist rà soát bếp ăn trường học trước năm học mới',target_site:'hatiencorp.vn',why_now:'Bản hoàn chỉnh đã qua kiểm tra.',approval_scope:'Duyệt bài, ảnh, CTA và lịch đăng',standard_status:'Đã áp dụng tiêu chuẩn bài website.',business_value:'Hỗ trợ SEO và tư vấn audit.',evidence_summary:'Nguồn chính thức đã kiểm.',primary_keyword:'rà soát bếp ăn trường học',search_intent:'Tìm checklist trước đợt kiểm tra',cta:'Đăng ký rà soát bếp trường học',qa_status:'PASS',seo_score:'86/100',planned_url:'https://hatiencorp.vn/checklist',publish_ready:'YES',preview_url:'https://example.com',publish_gate:{ok:true,reasons:[]}}
+      ],
+      scheduled:[
+        {source:'CONTENT',row_number:4,record_id:'demo-4',title:'Cách tính công suất bếp ăn công ty',target_site:'hatiencorp.vn',publish_at:tomorrow.toISOString(),owner_note:'Đăng buổi sáng.',preview_url:'https://example.com',publication_status:'SCHEDULED'}
+      ],
+      after_publish:[
+        {source:'CONTENT',row_number:5,record_id:'demo-5',title:'Bếp một chiều là gì?',target_site:'hatiencorp.vn',publication_status:'PUBLISHED_CHECKING',post_url:'https://example.com',post_publish_check:'Đang kiểm mobile và CTA.'}
+      ],
+      decided:[
+        {source:'G1_RESULTS',row_number:6,record_id:'demo-6',decision_type:'SHOULD_DO',owner_decision:'DONG_Y',owner_decided_at:new Date(Date.now()-2*60*60*1000).toISOString(),title:'Đã duyệt đề tài khảo sát khách hàng ngành F&B',owner_note:'Nên làm ngay để có dữ liệu tuần này.'},
+        {source:'CONTENT',row_number:7,record_id:'demo-7',decision_type:'PUBLISH',owner_decision:'LEN_LICH_DANG',owner_decided_at:new Date(Date.now()-40*60*1000).toISOString(),title:'Rà soát checklist an toàn bếp mới',owner_note:'Lên lịch trưa mai.'}
+      ]
+    };
   }
 
   document.addEventListener('DOMContentLoaded',load);
