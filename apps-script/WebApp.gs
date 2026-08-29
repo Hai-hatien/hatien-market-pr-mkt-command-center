@@ -31,8 +31,8 @@ function getMarketDashboardModel() {
       scheduled_publish: lifecycle.scheduled.length,
       published_count: lifecycle.published.length,
       recent_signals: signals.length,
-      summary: shouldDo.length || publishPending.length
-        ? 'Có ' + (shouldDo.length + publishPending.length) + ' việc cần anh Hải xem.'
+      summary: shouldDo.length || publishPending.length || publishLifecycle.length
+        ? 'Có ' + (shouldDo.length + publishPending.length + publishLifecycle.length) + ' việc cần anh Hải xem.'
         : 'Sáng nay chưa có việc nào cần anh Hải quyết định.'
     },
     signals,
@@ -64,8 +64,9 @@ function htmSaveMarketOwnerDecisionUnlocked_(payload) {
   }
 
   const type = String(payload.decision_type).toUpperCase();
-  const value = String(payload.decision_value || '').toUpperCase();
+  let value = String(payload.decision_value || '').toUpperCase();
   const source = String(payload.source).toUpperCase();
+  if (source === 'CONTENT' && type === 'SHOULD_DO' && value === 'SUA_LAI') value = 'NGHIEN_CUU_THEM';
   const allowed = type === 'PUBLISH' ? HTM_CONFIG.DECISIONS.PUBLISH : HTM_CONFIG.DECISIONS.SHOULD_DO;
 
   if (!allowed.includes(value)) throw new Error('Lựa chọn không hợp lệ.');
@@ -95,7 +96,8 @@ function htmSaveMarketOwnerDecisionUnlocked_(payload) {
   }
 
   const currentDecision = String(sheet.getRange(rowNumber, decisionCol).getDisplayValue() || 'CHUA_QUYET_DINH').toUpperCase();
-  if (currentDecision && currentDecision !== 'CHUA_QUYET_DINH') {
+  const canRequestResearchAgain = source === 'CONTENT' && type === 'SHOULD_DO' && value === 'NGHIEN_CUU_THEM';
+  if (currentDecision && currentDecision !== 'CHUA_QUYET_DINH' && !canRequestResearchAgain) {
     throw new Error('Việc này đã được quyết định trước đó. Vui lòng tải lại màn hình.');
   }
 
@@ -141,7 +143,51 @@ function htmGetDecisionItems_(onlyPending) {
 }
 
 function htmGetPublishLifecycleItems_() {
-  return htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'PUBLISH', false, true);
+  const items = [];
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'SHOULD_DO', false, true));
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'PUBLISH', false, true));
+
+  const seen = {};
+  return items
+    .filter(item => item.record_id || item.title)
+    .filter(item => {
+      const key = String(item.row_number || item.record_id || item.title || '');
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    })
+    .map(htmEnrichPublishLifecycleItem_);
+}
+
+function htmEnrichPublishLifecycleItem_(item) {
+  const enriched = Object.assign({}, item);
+  if (!enriched.publish_block_reason) {
+    enriched.publish_block_reason = htmInferPublishBlockReason_(enriched);
+  }
+  return enriched;
+}
+
+function htmInferPublishBlockReason_(item) {
+  const type = String(item.decision_type || '').toUpperCase();
+  const decision = htmNormalizeValue_(item.owner_decision);
+  const publishStatus = htmNormalizeValue_(item.publication_status);
+  const g7Status = String(item.g7_status || '').trim();
+  const approvalStatus = String(item.approval_status || '').trim();
+  const nextAction = String(item.recommendation || '').trim();
+
+  if (type !== 'PUBLISH') {
+    if (decision === 'DONGY') return 'Đã đồng ý làm nhưng chưa có bản thảo/preview được duyệt xuất bản.';
+    if (decision === 'NGHIENCUUTHEM') return 'Đang ở bước nghiên cứu thêm, chưa đủ điều kiện lên lịch đăng.';
+    if (decision === 'TAMHOAN') return 'Đề tài đang tạm hoãn, không đưa vào lịch đăng.';
+    if (decision === 'KHONGLAM') return 'Đề tài đã được quyết định không làm, không đưa vào lịch đăng.';
+    return 'Đề tài còn ở cổng quyết định có nên làm hay không, chưa phải bài chờ đăng.';
+  }
+
+  if (publishStatus === 'NOTREADY') return 'Bài chưa sẵn sàng xuất bản.';
+  if (g7Status && !['VERIFIED', 'NOT_REQUIRED'].includes(htmNormalizeValue_(g7Status))) return 'Chưa qua kiểm chứng G7: ' + g7Status + '.';
+  if (approvalStatus && !['APPROVED', 'APPROVEDTOCRM', 'APPROVEDTOPUBLISH'].includes(htmNormalizeValue_(approvalStatus))) return 'Chưa được phê duyệt xuất bản: ' + approvalStatus + '.';
+  if (nextAction) return nextAction;
+  return 'Chưa đủ điều kiện lên lịch đăng.';
 }
 
 function htmBuildPublishLifecycleGroups_(items) {
@@ -151,28 +197,31 @@ function htmBuildPublishLifecycleGroups_(items) {
   const published = [];
 
   (items || []).forEach(item => {
-    const decision = String(item.owner_decision || '').toUpperCase().replace(/[\s_-]/g, '');
-    const publishStatus = String(item.publication_status || '').toUpperCase().replace(/[\s_-]/g, '');
+    const decision = htmNormalizeValue_(item.owner_decision);
+    const publishStatus = htmNormalizeValue_(item.publication_status);
+    const publishReadyStatus = htmNormalizeValue_(item.publish_ready);
     const hasPublishedUrl = /^https?:\/\//i.test(String(item.post_url || ''));
-    const publishReady = String(item.publish_ready || '').toUpperCase().replace(/[\s_-]/g, '') === 'YES';
+    const publishReady = ['YES', 'READY', 'TRUE', 'PASS', 'APPROVED'].includes(publishReadyStatus);
+    const publishNotReady = ['NO', 'NOTREADY', 'FALSE', 'BLOCKED'].includes(publishReadyStatus)
+      || ['NOTREADY', 'NEEDSRESEARCH', 'PENDINGREVIEW', 'REVISIONREQUESTED', 'REJECTED'].includes(publishStatus);
 
     if (publishStatus === 'PUBLISHED' || publishStatus === 'PUBLISHEDCHECKING' || publishStatus === 'LIVEVERIFIED' || hasPublishedUrl) {
       published.push(item);
       return;
     }
-    if (decision === 'LEN_LICH_DANG' && item.publish_at) {
+    if (decision === 'LENLICHDANG' && item.publish_at) {
       scheduled.push(item);
       return;
     }
-    if (decision === 'SUA_LAI' || publishReady === 'NO' || publishStatus === 'REVISIONREQUESTED') {
+    if (item.decision_type !== 'PUBLISH') {
       notReady.push(item);
       return;
     }
-    if (decision === 'KHONG_DANG') {
+    if (decision === 'SUALAI' || decision === 'KHONGDANG' || publishNotReady) {
       notReady.push(item);
       return;
     }
-    if (decision === 'DANG_NGAY' || publishReady || (decision && !['CHUAQUYETDINH',''].includes(decision))) {
+    if (decision === 'DANGNGAY' || publishReady || (decision && !['CHUAQUYETDINH',''].includes(decision))) {
       readyToSchedule.push(item);
       return;
     }
@@ -230,10 +279,13 @@ function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePending
       decision_required: required,
       owner_decision: ownerDecision,
       owner_decided_at: read(row, ['owner_decided_at'], ''),
-      publication_status: read(row, ['publication_status', 'publish_status'], ''),
-      post_url: read(row, ['post_url', 'wp_post_url', 'published_url', 'live_url'], ''),
-      publish_ready: read(row, ['publish_ready', 'ready_to_publish', 'publish_ok'], ''),
+      publication_status: read(row, ['publication_status', 'publish_status', 'Publish Status'], ''),
+      post_url: read(row, ['post_url', 'wp_post_url', 'published_url', 'live_url', 'WP Post ID / URL'], ''),
+      publish_ready: read(row, ['publish_ready', 'ready_to_publish', 'publish_ok', 'Publish Ready'], ''),
       publish_block_reason: read(row, ['publish_block_reason', 'publish_reason', 'block_reason', 'reason_not_ready'], ''),
+      approval_status: read(row, ['approval_status', 'Approval Status'], ''),
+      g7_status: read(row, ['g7_status', 'G7 Status'], ''),
+      work_status: read(row, ['work_status', 'Work Status'], ''),
       title: read(row, ['decision_title', 'Working Title', 'title', 'content_title', 'seo_title', 'finding', 'Core message'], 'Việc cần xem'),
       why_now: read(row, ['reason_to_decide', 'Decision / Notes', 'why_now', 'business_case', 'impact_hatien'], ''),
       value_summary: read(row, ['value_summary', 'impact_hatien', 'business_value', 'expected_value', 'Affected product/customer'], ''),
@@ -255,7 +307,7 @@ function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePending
 }
 
 function htmIsOwnerUndecided_(value) {
-  const normalized = String(value || '').trim().toUpperCase().replace(/[\s_-]/g, '');
+  const normalized = htmNormalizeValue_(value);
   return !normalized || normalized === 'CHUAQUYETDINH';
 }
 
@@ -281,7 +333,7 @@ function htmGetScheduledPublishItems_() {
     publish_at: read(row, ['publish_at', 'scheduled_at'], ''),
     owner_note: read(row, ['owner_note', 'Decision / Notes'], '')
   }))
-    .filter(item => item.owner_decision === 'LEN_LICH_DANG' && item.publish_at)
+    .filter(item => htmNormalizeValue_(item.owner_decision) === 'LENLICHDANG' && item.publish_at)
     .sort((a, b) => String(a.publish_at || '').localeCompare(String(b.publish_at || '')))
     .slice(0, 20);
 }
@@ -374,7 +426,11 @@ function htmReadByAliases_(headers, row, aliases, fallback) {
 }
 
 function htmNormalizeHeader_(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9à-ỹ]+/g, '');
+}
+
+function htmNormalizeValue_(value) {
+  return String(value || '').trim().toUpperCase().replace(/[\s_-]/g, '');
 }
 
 function htmVerifyRecordIdentity_(sheet, meta, rowNumber, recordId) {
