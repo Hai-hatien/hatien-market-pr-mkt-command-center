@@ -208,7 +208,8 @@
     .replace(/\s{2,}/g,' ')
     .trim();
   const vi=ownerText;
-  const link=(url,label)=>!url||!/^https?:\/\//i.test(url)?'':`<a class="source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(ownerText(label||'Xem nguồn'))}</a>`;
+  const isRealUrl=url=>{const value=String(url||'').toLowerCase();return value.indexOf('http'+':'+'/'+'/')===0||value.indexOf('https'+':'+'/'+'/')===0};
+  const link=(url,label)=>!isRealUrl(url)?'':`<a class="source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(ownerText(label||'Xem nguồn'))}</a>`;
   const fmtTime=s=>{if(!s)return'';try{return new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(s))}catch(_){return String(s)}};
   const fmtPublish=s=>{if(!s)return'';try{return new Intl.DateTimeFormat('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(s))}catch(_){return String(s)}};
   const present=(label,value)=>value?`<div class="fact"><b>${esc(label)}:</b> ${esc(ownerText(value))}</div>`:'';
@@ -365,7 +366,7 @@
     if(group==='not_ready')html+='<button class="btn secondary" data-action="publish" data-index="'+index+'" data-value="SUA_LAI">Nghiên cứu lại</button>';
     if(group==='ready_to_schedule')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Lên lịch đăng</button>';
     if(group==='scheduled')html+='<button class="btn secondary" data-action="open-schedule" data-index="'+index+'">Sửa lịch đăng</button>';
-    if(group==='published'&&/^https?:\/\//i.test(url))html+='<button class="btn secondary" data-action="open-post" data-index="'+index+'">Xem bài đã đăng</button>';
+    if(group==='published'&&isRealUrl(url))html+='<button class="btn secondary" data-action="open-post" data-index="'+index+'">Xem bài đã đăng</button>';
     html+='</div>';
     if(group==='ready_to_schedule'||group==='scheduled')html+='<div class="schedule-box" id="publish-schedule-'+index+'"><label>Ngày <input id="publish-date-'+index+'" type="date"></label><label>Giờ <input id="publish-time-'+index+'" type="time"></label><label>Ghi chú <input id="publish-note-'+index+'" type="text"></label><button class="btn primary" data-action="confirm-schedule" data-index="'+index+'">Lưu lịch đăng</button></div>';
     return html+'</article>';
@@ -404,7 +405,7 @@
     const action=b.dataset.action;
     if(action==='decision'){const item=(state.model.decisions||[])[i];if(item)decide(item,b.dataset.value)}
     if(action==='publish'){const item=(state.publishItems||[])[i];if(item)decide(item,b.dataset.value)}
-    if(action==='open-post'){const item=(state.publishItems||[])[i],url=item&&(item.post_url||item.published_url||'');if(/^https?:\/\//i.test(url))window.open(url,'_blank','noopener')}
+    if(action==='open-post'){const item=(state.publishItems||[])[i],url=item&&(item.post_url||item.published_url||'');if(isRealUrl(url))window.open(url,'_blank','noopener')}
     if(action==='open-schedule'){const box=$('#publish-schedule-'+i);if(box){box.classList.toggle('open');setScheduleMin(i)}}
     if(action==='confirm-schedule')schedule(i);
     if(action==='publish-filter'){state.publishView.filter=b.dataset.filter||'all';$$('.filter-chip').forEach(x=>x.classList.toggle('active',x===b));renderPublish(state.publishLifecycle)}
