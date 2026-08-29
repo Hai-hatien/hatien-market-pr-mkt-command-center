@@ -2,8 +2,9 @@ import fs from 'node:fs';
 
 const html=fs.readFileSync('apps-script/Index.html','utf8');
 const must=[
-  'screen-overview','screen-decisions','screen-publish',
+  'screen-overview','screen-decisions','screen-decided','screen-publish',
   'Tổng quan','Cần quyết định','Chờ đăng',
+  'Đã quyết định',
   'Có nên làm / viết không?','Có cho xuất bản không?',
   'Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng',
   'Đồng ý làm','Nghiên cứu thêm','Tạm hoãn','Không làm',

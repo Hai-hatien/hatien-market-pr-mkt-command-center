@@ -88,7 +88,7 @@
     .empty{padding:27px 17px;background:var(--card);border:1px dashed #d6cfc3;border-radius:18px;color:var(--muted);font-size:14px;line-height:1.5;text-align:center}
     .loading{padding:36px 0;color:var(--muted);text-align:center}
     .bottom{position:fixed;z-index:10;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:7px max(10px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));background:rgba(255,255,255,.98);border-top:1px solid var(--line)}
-    .nav{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:min(720px,100%)}
+    .nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;width:min(720px,100%)}
     .nav button{min-width:0;min-height:54px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-size:10px;line-height:1.15}
     .nav button b{display:block;margin-bottom:4px;font-size:18px;line-height:1}
     .nav button.active{background:var(--soft);color:var(--text);font-weight:800}
@@ -145,6 +145,11 @@
       <div id="decisions-list" class="list"></div>
     </section>
 
+    <section id="screen-decided" class="screen" aria-labelledby="decided-heading">
+      <div class="section-title"><h2 id="decided-heading">Đã quyết định</h2><span id="decided-count"></span></div>
+      <div id="decided-list" class="list"></div>
+    </section>
+
     <section id="screen-publish" class="screen" aria-labelledby="publish-heading">
       <div class="section-title"><h2 id="publish-heading">Bài chờ đăng / lịch đăng</h2><span id="publish-count"></span></div>
       <div id="publish-pending-list" class="list"></div>
@@ -160,6 +165,7 @@
   <div class="nav">
     <button class="active" data-screen="overview" aria-label="Tổng quan"><b aria-hidden="true">⌂</b>Tổng quan</button>
     <button data-screen="decisions" aria-label="Việc cần quyết định"><b aria-hidden="true">✓</b>Cần quyết định</button>
+    <button data-screen="decided" aria-label="Đã quyết định"><b aria-hidden="true">✓</b>Đã quyết định</button>
     <button data-screen="publish" aria-label="Bài chờ đăng và lịch đăng"><b aria-hidden="true">◷</b>Chờ đăng</button>
   </div>
 </nav>
@@ -219,6 +225,7 @@
     $('#overview-content').hidden=false;
     renderSignals(state.model.signals||[]);
     renderDecisions(state.model.decisions||[], state.model.decisions_candidates||[]);
+    renderDecided(state.model.decided||[]);
     renderPublish(state.model.publish||[],state.model.scheduled||[],state.model.after_publish||[]);
   }
 
@@ -249,6 +256,22 @@
       return;
     }
     el.innerHTML=filtered.map((x,i)=>`<article class="card"><div class="tag">Có nên làm / viết không?</div><h3>${esc(ownerText(x.title))}</h3><div class="facts">${present('Vì sao cần xem lúc này',x.why_now)}${present('Căn cứ',x.evidence_summary)}${present('Giá trị dự kiến',x.value_summary)}${present('Cần lưu ý',x.risk_summary)}</div>${x.recommendation?`<div class="recommend"><b>Đề xuất:</b> ${esc(vi(x.recommendation))}</div>`:''}${link(x.source_url,x.source_title||'Xem căn cứ')}<div class="actions"><button class="btn primary" data-action="decision" data-index="${i}" data-value="DONG_Y">Đồng ý làm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="NGHIEN_CUU_THEM">Nghiên cứu thêm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="TAM_HOAN">Tạm hoãn</button><button class="btn danger" data-action="decision" data-index="${i}" data-value="KHONG_LAM">Không làm</button></div><div class="decision-note">Đồng ý đề tài chỉ cho phép đội ngũ làm tiếp; chưa đồng nghĩa bài được xuất bản.</div></article>`).join('');
+  }
+
+  function renderDecided(items){
+    const filtered = (items || []).slice().sort((a,b)=>String(b.owner_decided_at||'').localeCompare(String(a.owner_decided_at||''));
+    $('#decided-count').textContent=filtered.length?`${filtered.length} việc`:'';
+    const el=$('#decided-list');
+    if(!filtered.length){
+      el.innerHTML='<div class="empty">Chưa có quyết định nào để theo dõi.</div>';
+      return;
+    }
+    const label=(value)=>{
+      const norm=String(value||'').trim().toUpperCase().replace(/\s+/g,'_');
+      const map={DONG_Y:'Đồng ý làm',NGHIEN_CUU_THEM:'Nghiên cứu thêm',TAM_HOAN:'Tạm hoãn',KHONG_LAM:'Không làm',SUA_LAI:'Sửa lại',KHONG_DANG:'Không đăng',LEN_LICH_DANG:'Lên lịch đăng',DANG_NGAY:'Đã chọn đăng ngay',CHUA_QUYET_DINH:'Chưa quyết định'};
+      return map[norm]||ownerText(value||'Đang chờ cập nhật');
+    };
+    el.innerHTML=filtered.map(x=>`<article class="card"><div class="tag">${x.decision_type==='PUBLISH'?'Duyệt đăng':'Nên làm / viết'}</div><div class="meta">Trạng thái: ${esc(label(x.owner_decision))}</div><h3>${esc(ownerText(x.title))}</h3><div class="meta">Nguồn: ${esc(ownerText(x.source))}</div>${x.owner_decided_at?`<div class="meta">Thời điểm quyết định: ${esc(fmtTime(x.owner_decided_at))}</div>`:''}${x.owner_note?`<div class="body">${esc(ownerText(x.owner_note))}</div>`:''}</article>`).join('');
   }
 
   function publishReady(x){return Boolean(x.publish_gate&&x.publish_gate.ok)}
@@ -349,6 +372,9 @@
       {source:'CONTENT',row_number:4,record_id:'demo-4',title:'Cách tính công suất bếp ăn công ty theo số suất và giờ phục vụ',target_site:'hatiencorp.vn',publish_at:tomorrow.toISOString(),owner_note:'Đăng buổi sáng.',preview_url:'https://example.com',publication_status:'SCHEDULED'}
     ],after_publish:[
       {source:'CONTENT',row_number:5,record_id:'demo-5',title:'Bếp một chiều là gì?',target_site:'hatiencorp.vn',publication_status:'PUBLISHED_CHECKING',post_url:'https://example.com',post_publish_check:'Đang kiểm mobile, CTA, canonical và tracking.'}
+    ],decided:[
+      {source:'G1_RESULTS',row_number:6,record_id:'demo-6',decision_type:'SHOULD_DO',owner_decision:'DONG_Y',owner_decided_at:new Date(Date.now()-2*60*60*1000).toISOString(),title:'Đã duyệt đề tài khảo sát khách hàng ngành F&B',owner_note:'Nên làm ngay để có dữ liệu tuần này.'},
+      {source:'CONTENT',row_number:7,record_id:'demo-7',decision_type:'PUBLISH',owner_decision:'LEN_LICH_DANG',owner_decided_at:new Date(Date.now()-40*60*1000).toISOString(),title:'Rà soát checklist an toàn bếp mới',owner_note:'Lên lịch trưa mai.'}
     ]};
   }
 

@@ -15,6 +15,7 @@ function getMarketDashboardModel() {
   const shouldDo = shouldDoCandidates.filter(x => htmIsOwnerUndecided_(x.owner_decision)).slice(0, 10);
   const publishPending = htmGetDecisionItems_(true);
   const publishScheduled = htmGetScheduledPublishItems_();
+  const decided = htmGetDecidedItems_();
   const signals = htmGetRecentSignals_(8);
 
   return {
@@ -34,6 +35,7 @@ function getMarketDashboardModel() {
     signals,
     decisions: shouldDo,
     decisions_candidates: shouldDoCandidates,
+    decided,
     publish: publishPending,
     scheduled: publishScheduled
   };
@@ -134,7 +136,18 @@ function htmGetDecisionItems_(onlyPending) {
     .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
 }
 
-function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePendingOnly) {
+function htmGetDecidedItems_() {
+  const items = [];
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.G1_RESULTS, 'G1_RESULTS', 'SHOULD_DO', false, true));
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'SHOULD_DO', false, true));
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'PUBLISH', false, true));
+
+  return items
+    .filter(x => !htmIsOwnerUndecided_(x.owner_decision))
+    .sort((a, b) => String(b.owner_decided_at || '').localeCompare(String(a.owner_decided_at || '')));
+}
+
+function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePendingOnly, includeNoDecisionRequired) {
   const sheet = htmSheet_(sheetName);
   if (sheet.getLastRow() < 2 || sheet.getLastColumn() < 1) return [];
 
@@ -157,6 +170,7 @@ function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePending
       decision_type: type === 'PUBLISH' ? 'PUBLISH' : 'SHOULD_DO',
       decision_required: required,
       owner_decision: ownerDecision,
+      owner_decided_at: read(row, ['owner_decided_at'], ''),
       title: read(row, ['decision_title', 'Working Title', 'title', 'content_title', 'seo_title', 'finding', 'Core message'], 'Việc cần xem'),
       why_now: read(row, ['reason_to_decide', 'Decision / Notes', 'why_now', 'business_case', 'impact_hatien'], ''),
       value_summary: read(row, ['value_summary', 'impact_hatien', 'business_value', 'expected_value', 'Affected product/customer'], ''),
@@ -170,7 +184,11 @@ function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePending
       created_at: read(row, ['created_at', 'Last Updated', 'Proposed Date', 'updated_at'], ''),
       publish_at: read(row, ['publish_at', 'scheduled_at'], '')
     };
-  }).filter(item => item.decision_required === 'YES' && item.decision_type === defaultType && (includePendingOnly === false || htmIsOwnerUndecided_(item.owner_decision)));
+  }).filter(item =>
+    (includeNoDecisionRequired || item.decision_required === 'YES')
+      && item.decision_type === defaultType
+      && (includePendingOnly === false || htmIsOwnerUndecided_(item.owner_decision))
+  );
 }
 
 function htmIsOwnerUndecided_(value) {
