@@ -134,7 +134,7 @@ function htmSaveMarketOwnerDecisionUnlocked_(payload) {
   if (publishAtCol > 0) sheet.getRange(rowNumber, publishAtCol).setValue(publishAt);
 
   htmAppendRun_({
-    job: canLifecycleAction ? 'PUBLISH_LIFECYCLE_ACTION' : 'OWNER_DECISION',
+    job: 'OWNER_DECISION',
     trigger_type: 'USER_ACTION',
     actor: HTM_CONFIG.FINAL_APPROVER,
     status: 'COMPLETED',
