@@ -31,6 +31,7 @@
     .hero .big{font-size:34px;line-height:1;font-weight:850}
     .hero p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
     .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:13px}
+    .quick-actions{display:grid;gap:8px;margin-top:13px}
     .metric{min-width:0;padding:11px 5px;background:var(--soft);border-radius:13px;text-align:center}
     .metric strong{display:block;font-size:20px}
     .metric span{display:block;margin-top:3px;color:var(--muted);font-size:9.5px;line-height:1.25}
@@ -130,6 +131,9 @@
             <div class="metric"><strong id="metric-scheduled">0</strong><span>Đã lên lịch</span></div>
             <div class="metric"><strong id="metric-signals">0</strong><span>Tín hiệu mới</span></div>
           </div>
+          <div class="quick-actions">
+            <button id="view-all-pending" class="btn gold" type="button">Xem toàn bộ hàng chờ</button>
+          </div>
         </div>
         <div class="section-title"><h2 id="overview-heading">Đáng chú ý sáng nay</h2><span id="signal-count"></span></div>
         <div id="signals-list" class="list"></div>
@@ -187,6 +191,10 @@
   const fmtPublish=s=>{if(!s)return'';try{return new Intl.DateTimeFormat('vi-VN',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(s))}catch(_){return String(s)}};
   const present=(label,value)=>value?`<div class="fact"><b>${esc(label)}:</b> ${esc(ownerText(value))}</div>`:'';
   const quality=(label,value)=>value?`<div class="quality-item"><span>${esc(label)}</span><b>${esc(ownerText(value))}</b></div>`:'';
+  const isUndecidedOwner = value => {
+    const normalized = String(value || '').trim().toUpperCase().replace(/[\s_-]/g,'');
+    return !normalized || normalized === 'CHUAQUYETDINH';
+  };
 
   function switchScreen(name){
     $$('.screen').forEach(x=>x.classList.toggle('active',x.id===`screen-${name}`));
@@ -210,7 +218,7 @@
     $('#overview-loading').hidden=true;
     $('#overview-content').hidden=false;
     renderSignals(state.model.signals||[]);
-    renderDecisions(state.model.decisions||[]);
+    renderDecisions(state.model.decisions||[], state.model.decisions_candidates||[]);
     renderPublish(state.model.publish||[],state.model.scheduled||[],state.model.after_publish||[]);
   }
 
@@ -221,11 +229,26 @@
     el.innerHTML=items.map(x=>`<article class="card"><div class="tag">Tín hiệu thị trường</div><h3>${esc(ownerText(x.title))}</h3>${x.detail?`<div class="body">${esc(ownerText(x.detail))}</div>`:''}${x.recommendation?`<div class="recommend"><b>Đề xuất:</b> ${esc(vi(x.recommendation))}</div>`:''}${link(x.source_url,x.source_title||'Xem nguồn')}</article>`).join('');
   }
 
-  function renderDecisions(items){
-    $('#decision-count').textContent=items.length?items.length+' việc':'';
+  function renderDecisions(items, candidates){
+    const candidateList = (candidates || items || [])
+      .filter(x => String(x.decision_type || '').toUpperCase() === 'SHOULD_DO')
+      .filter(x => String(x.decision_required || '').toUpperCase() === 'YES')
+      .filter(x => isUndecidedOwner(x.owner_decision));
+    const filtered = (items || [])
+      .filter(x => String(x.decision_type || '').toUpperCase() === 'SHOULD_DO')
+      .filter(x => String(x.decision_required || '').toUpperCase() === 'YES')
+      .filter(x => isUndecidedOwner(x.owner_decision))
+      .slice(0, 10);
+    $('#decision-count').textContent=filtered.length?`${filtered.length} việc`:'';
     const el=$('#decisions-list');
-    if(!items.length){el.innerHTML='<div class="empty">Không có việc nào đang chờ anh quyết định.</div>';return}
-    el.innerHTML=items.map((x,i)=>`<article class="card"><div class="tag">Có nên làm / viết không?</div><h3>${esc(ownerText(x.title))}</h3><div class="facts">${present('Vì sao cần xem lúc này',x.why_now)}${present('Căn cứ',x.evidence_summary)}${present('Giá trị dự kiến',x.value_summary)}${present('Cần lưu ý',x.risk_summary)}</div>${x.recommendation?`<div class="recommend"><b>Đề xuất:</b> ${esc(vi(x.recommendation))}</div>`:''}${link(x.source_url,x.source_title||'Xem căn cứ')}<div class="actions"><button class="btn primary" data-action="decision" data-index="${i}" data-value="DONG_Y">Đồng ý làm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="NGHIEN_CUU_THEM">Nghiên cứu thêm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="TAM_HOAN">Tạm hoãn</button><button class="btn danger" data-action="decision" data-index="${i}" data-value="KHONG_LAM">Không làm</button></div><div class="decision-note">Đồng ý đề tài chỉ cho phép đội ngũ làm tiếp; chưa đồng nghĩa bài được xuất bản.</div></article>`).join('');
+    if(!filtered.length){
+      const hasPotential = candidateList.length > 0;
+      el.innerHTML = hasPotential
+        ? '<div class="empty">Có đề tài trong kế hoạch nhưng chưa đủ điều kiện duyệt.</div>'
+        : '<div class="empty">Không có việc nào cần quyết định.</div>';
+      return;
+    }
+    el.innerHTML=filtered.map((x,i)=>`<article class="card"><div class="tag">Có nên làm / viết không?</div><h3>${esc(ownerText(x.title))}</h3><div class="facts">${present('Vì sao cần xem lúc này',x.why_now)}${present('Căn cứ',x.evidence_summary)}${present('Giá trị dự kiến',x.value_summary)}${present('Cần lưu ý',x.risk_summary)}</div>${x.recommendation?`<div class="recommend"><b>Đề xuất:</b> ${esc(vi(x.recommendation))}</div>`:''}${link(x.source_url,x.source_title||'Xem căn cứ')}<div class="actions"><button class="btn primary" data-action="decision" data-index="${i}" data-value="DONG_Y">Đồng ý làm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="NGHIEN_CUU_THEM">Nghiên cứu thêm</button><button class="btn soft" data-action="decision" data-index="${i}" data-value="TAM_HOAN">Tạm hoãn</button><button class="btn danger" data-action="decision" data-index="${i}" data-value="KHONG_LAM">Không làm</button></div><div class="decision-note">Đồng ý đề tài chỉ cho phép đội ngũ làm tiếp; chưa đồng nghĩa bài được xuất bản.</div></article>`).join('');
   }
 
   function publishReady(x){return Boolean(x.publish_gate&&x.publish_gate.ok)}
@@ -265,6 +288,8 @@
     if(action==='open-schedule'){const box=$('#schedule-'+i);if(box){box.classList.toggle('open');setScheduleMin(i)}}
     if(action==='confirm-schedule')schedule(i);
   });
+
+  $('#view-all-pending')?.addEventListener('click',()=>switchScreen('decisions'));
 
   function localDateParts(date){const y=date.getFullYear();const m=String(date.getMonth()+1).padStart(2,'0');const d=String(date.getDate()).padStart(2,'0');const hh=String(date.getHours()).padStart(2,'0');const mm=String(date.getMinutes()).padStart(2,'0');return{date:`${y}-${m}-${d}`,time:`${hh}:${mm}`}}
   function setScheduleMin(i){

@@ -11,9 +11,9 @@ function doGet() {
 function getMarketDashboardModel() {
   htmEnsureMvpColumns_();
 
-  const decisions = htmGetDecisionItems_();
-  const shouldDo = decisions.filter(x => x.decision_type === 'SHOULD_DO');
-  const publishPending = decisions.filter(x => x.decision_type === 'PUBLISH');
+  const shouldDoCandidates = htmGetDecisionItems_(false);
+  const shouldDo = shouldDoCandidates.filter(x => htmIsOwnerUndecided_(x.owner_decision)).slice(0, 10);
+  const publishPending = htmGetDecisionItems_(true);
   const publishScheduled = htmGetScheduledPublishItems_();
   const signals = htmGetRecentSignals_(8);
 
@@ -23,6 +23,7 @@ function getMarketDashboardModel() {
     greeting: htmOwnerGreeting_(),
     overview: {
       needs_decision: shouldDo.length,
+      needs_decision_candidates: shouldDoCandidates.length,
       waiting_publish: publishPending.length,
       scheduled_publish: publishScheduled.length,
       recent_signals: signals.length,
@@ -32,6 +33,7 @@ function getMarketDashboardModel() {
     },
     signals,
     decisions: shouldDo,
+    decisions_candidates: shouldDoCandidates,
     publish: publishPending,
     scheduled: publishScheduled
   };
@@ -121,17 +123,18 @@ function htmSaveMarketOwnerDecisionUnlocked_(payload) {
   return { ok: true, message: htmDecisionSuccessMessage_(type, value) };
 }
 
-function htmGetDecisionItems_() {
+function htmGetDecisionItems_(onlyPending) {
+  const includePendingOnly = onlyPending !== false;
   const items = [];
-  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.G1_RESULTS, 'G1_RESULTS', 'SHOULD_DO'));
-  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'SHOULD_DO'));
-  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'PUBLISH'));
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.G1_RESULTS, 'G1_RESULTS', 'SHOULD_DO', includePendingOnly));
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'SHOULD_DO', includePendingOnly));
+  items.push.apply(items, htmReadDecisionSheet_(HTM_CONFIG.SHEETS.CONTENT, 'CONTENT', 'PUBLISH', includePendingOnly));
   return items
-    .filter(x => !x.owner_decision || x.owner_decision === 'CHUA_QUYET_DINH')
+    .filter(x => htmIsOwnerUndecided_(x.owner_decision))
     .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
 }
 
-function htmReadDecisionSheet_(sheetName, sourceKey, defaultType) {
+function htmReadDecisionSheet_(sheetName, sourceKey, defaultType, includePendingOnly) {
   const sheet = htmSheet_(sheetName);
   if (sheet.getLastRow() < 2 || sheet.getLastColumn() < 1) return [];
 
@@ -167,7 +170,12 @@ function htmReadDecisionSheet_(sheetName, sourceKey, defaultType) {
       created_at: read(row, ['created_at', 'Last Updated', 'Proposed Date', 'updated_at'], ''),
       publish_at: read(row, ['publish_at', 'scheduled_at'], '')
     };
-  }).filter(item => item.decision_required === 'YES' && item.decision_type === defaultType);
+  }).filter(item => item.decision_required === 'YES' && item.decision_type === defaultType && (includePendingOnly === false || htmIsOwnerUndecided_(item.owner_decision)));
+}
+
+function htmIsOwnerUndecided_(value) {
+  const normalized = String(value || '').trim().toUpperCase().replace(/[\s_-]/g, '');
+  return !normalized || normalized === 'CHUAQUYETDINH';
 }
 
 function htmGetScheduledPublishItems_() {

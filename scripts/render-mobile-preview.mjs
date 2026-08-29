@@ -7,11 +7,26 @@ const widths=[360,390];
 const screens=['overview','decisions','publish'];
 const expected={
   overview:['Đáng chú ý sáng nay','Cần quyết định','Chờ duyệt đăng'],
-  decisions:['Việc cần anh quyết định','Có nên làm / viết không?','Đồng ý làm'],
+  decisions:['Việc cần anh quyết định','Không có việc nào cần quyết định.'],
   publish:['Bài chờ đăng / lịch đăng','Có cho xuất bản không?','Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng']
 };
 const report=[];
-const browser=await chromium.launch({headless:true});
+const candidates = [
+  'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  process.env.CHROME_EXECUTABLE_PATH
+].filter(Boolean);
+const launchOptions = {headless:true};
+for (const candidate of candidates) {
+  try {
+    if (fs.existsSync(candidate)) {
+      launchOptions.executablePath = candidate;
+      break;
+    }
+  } catch (_) {}
+}
+
+const browser=await chromium.launch(launchOptions);
 try{
   for(const width of widths){
     const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1});

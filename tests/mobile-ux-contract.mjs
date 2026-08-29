@@ -7,6 +7,7 @@ const must=[
   'Có nên làm / viết không?','Có cho xuất bản không?',
   'Đăng ngay','Lên lịch đăng','Sửa lại','Không đăng',
   'Đồng ý làm','Nghiên cứu thêm','Tạm hoãn','Không làm',
+  'Xem toàn bộ hàng chờ',
   'Vì sao cần xem lúc này','Căn cứ','Giá trị dự kiến','Cần lưu ý','Đề xuất:',
   'Đồng ý đề tài chỉ cho phép đội ngũ làm tiếp; chưa đồng nghĩa bài được xuất bản.',
   'CHẾ ĐỘ XEM THỬ','không ghi Google Sheet','không đăng website',
